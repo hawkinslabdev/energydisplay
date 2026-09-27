@@ -17,6 +17,9 @@ export interface Entities {
   battery: string[];
   batteryIn: string[];
   batteryOut: string[];
+  gasCost: string[];
+  electricityCost: string[];
+  electricityCompensation: string[];
 }
 
 // null means not configured, or no usable state in Home Assistant.
@@ -31,6 +34,7 @@ export interface Reading {
   battery_soc: number | null;
   gas_cost_today: number | null;
   gas_price: number | null;
+  electricity_cost_today: number | null;
   grid_net_today: number | null;
   solar_self_consumed_pct: number | null;
   self_sufficiency_pct: number | null;
@@ -46,6 +50,8 @@ interface EnergySource {
   type: string;
   stat_energy_from?: string | null;
   stat_energy_to?: string | null;
+  stat_cost?: string | null;
+  stat_compensation?: string | null;
   stat_rate?: string;
   stat_soc?: string;
   number_energy_price?: number | null;
@@ -53,12 +59,20 @@ interface EnergySource {
 
 export const ENTITY_ID = /^[a-z0-9_]+\.[a-z0-9_]+$/;
 
-export function fromPrefs(prefs: { energy_sources: EnergySource[] }) {
+// costSensors is energy/info cost_sensors: the cost entity home assistant made per meter
+export function fromPrefs(prefs: { energy_sources: EnergySource[] }, costSensors: Record<string, string> = {}) {
+  const valid = (id: unknown): id is string => typeof id === "string" && ENTITY_ID.test(id);
   const pick = (type: string, key: keyof EnergySource) =>
     prefs.energy_sources
       .filter((source) => source.type === type)
       .map((source) => source[key])
-      .filter((id): id is string => typeof id === "string" && ENTITY_ID.test(id));
+      .filter(valid);
+  // stat_cost, else the generated cost sensor, as the home assistant frontend does
+  const cost = (type: string, key: "stat_cost" | "stat_compensation", meter: "stat_energy_from" | "stat_energy_to") =>
+    prefs.energy_sources
+      .filter((source) => source.type === type)
+      .map((source) => source[key] || costSensors[source[meter] ?? ""])
+      .filter(valid);
   const gas = prefs.energy_sources.find((source) => source.type === "gas");
 
   return {
@@ -72,6 +86,9 @@ export function fromPrefs(prefs: { energy_sources: EnergySource[] }) {
       battery: pick("battery", "stat_soc"),
       batteryIn: pick("battery", "stat_energy_to"),
       batteryOut: pick("battery", "stat_energy_from"),
+      gasCost: cost("gas", "stat_cost", "stat_energy_from"),
+      electricityCost: cost("grid", "stat_cost", "stat_energy_from"),
+      electricityCompensation: cost("grid", "stat_compensation", "stat_energy_to"),
     },
     gasPrice: gas?.number_energy_price ?? undefined,
   };
@@ -119,6 +136,13 @@ export function summarize(
   const change = (id: string, row: Row) => (row.change ?? 0) * factor(id);
 
   const gasToday = total(entities.gas.map(today));
+  // cost statistics from home assistant, else gas times GAS_PRICE
+  const gasCost = total(entities.gasCost.map(today))
+    ?? (gasToday === null || gasPrice === null ? null : gasToday * gasPrice);
+  const electricityCost = total([
+    ...entities.electricityCost.map(today),
+    ...entities.electricityCompensation.map((id) => today(id) === undefined ? undefined : -today(id)!),
+  ]);
   const imported = scaledToday(entities.energyImport);
   const exported = scaledToday(entities.energyExport);
   const solar = scaledToday(entities.solar);
@@ -147,7 +171,10 @@ export function summarize(
     water_today_l: typical(byStart(days, entities.water, change).values()),
     grid_net_today: typical(byStart(days, [...entities.energyImport, ...entities.energyExport], (id, row) =>
       (entities.energyExport.includes(id) ? -1 : 1) * change(id, row)).values()),
-    gas_cost_today: gasScale && gasPrice ? gasScale * gasPrice : undefined,
+    gas_cost_today: typical(byStart(days, entities.gasCost, (_, row) => row.change ?? 0).values())
+      ?? (gasScale && gasPrice ? gasScale * gasPrice : undefined),
+    electricity_cost_today: typical(byStart(days, [...entities.electricityCost, ...entities.electricityCompensation], (id, row) =>
+      (entities.electricityCompensation.includes(id) ? -1 : 1) * (row.change ?? 0)).values()),
   };
 
   return {
@@ -159,8 +186,9 @@ export function summarize(
     water_today_l: scaledToday(entities.water),
     temperature: first(entities.temperature),
     battery_soc: first(entities.battery),
-    gas_cost_today: gasToday === null || gasPrice === null ? null : gasToday * gasPrice,
+    gas_cost_today: gasCost,
     gas_price: gasPrice,
+    electricity_cost_today: electricityCost,
     grid_net_today: total([imported ?? undefined, exported === null ? undefined : -exported]),
     solar_self_consumed_pct: solar === null || exported === null ? null : solarConsumedPct(hours),
     self_sufficiency_pct: imported === null ? null : selfSufficiencyPct(hours),

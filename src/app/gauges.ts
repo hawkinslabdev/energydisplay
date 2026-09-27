@@ -72,8 +72,15 @@ export const GAUGES = {
         field: "gas_cost_today",
         icon: ["M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"], requires: ["gas"], maxValue: 10, unit: "€", background: "#595959", highlight: "#ffffff",
         title: "Gas cost today",
-        detail: "Estimated cost of today's gas usage at the configured rate. Half scale: typical day of the last 30 days and the same season last year.",
-        source: "GAS × GAS_PRICE",
+        detail: "Gas cost since midnight, from Home Assistant cost statistics or the configured rate. Half scale: typical day of the last 30 days and the same season last year.",
+        source: "Gas price in the Home Assistant Energy dashboard, or GAS × GAS_PRICE",
+    },
+    electricity_cost: {
+        field: "electricity_cost_today",
+        icon: ["M4 10h12", "M4 14h9", "M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"], requires: ["electricityCost"], maxValue: 10, unit: "€", background: "#4d4213", highlight: "#ffd23f",
+        title: "Electricity cost today",
+        detail: "Grid import cost minus export compensation since midnight. Half scale: typical day of the last 30 days and the same season last year.",
+        source: "Grid prices in the Home Assistant Energy dashboard",
     },
     temperature: {
         field: "temperature",

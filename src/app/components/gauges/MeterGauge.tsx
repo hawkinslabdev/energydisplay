@@ -17,7 +17,9 @@ const BAR_END = 192;
 const BAR_WIDTH = 10;
 
 export default function MeterGauge(props: MeterGaugeProps) {
-    const fill = fraction(props.value ?? props.minValue, props.maxValue, props.minValue) * (BAR_END - BAR_START);
+    // negative values, e.g. export compensation, fill from the right
+    const fill = fraction(Math.abs(props.value ?? props.minValue), props.maxValue, props.minValue) * (BAR_END - BAR_START);
+    const [from, to] = (props.value ?? 0) < 0 ? [BAR_END, BAR_START] : [BAR_START, BAR_END];
     const [whole, decimals] = props.value === null ? ["–", ""] : props.value.toFixed(2).split(".");
 
     return (
@@ -36,9 +38,9 @@ export default function MeterGauge(props: MeterGaugeProps) {
                 <line x1={BAR_START} y1="10" x2={BAR_END} y2="10" strokeLinecap="round" strokeWidth={BAR_WIDTH} stroke={props.gaugeBackground} />
                 {props.value !== null && (
                     <line
-                        x1={BAR_START}
+                        x1={from}
                         y1="10"
-                        x2={BAR_END}
+                        x2={to}
                         y2="10"
                         strokeLinecap={linecap(fill, BAR_WIDTH)}
                         strokeWidth={BAR_WIDTH}

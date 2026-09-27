@@ -53,7 +53,7 @@ Autodiscovery is on by default (`AUTODISCOVER=false` disables it) and reads enti
 
 | Value | Source |
 | --- | --- |
-| Grid import and export, solar, gas, water, battery state of charge, battery energy in and out, gas price | Energy dashboard |
+| Grid import and export, solar, gas, water, battery state of charge, battery energy in and out, gas price, gas and electricity cost statistics | Energy dashboard |
 | Power | Energy dashboard grid power; otherwise the power sensor on the grid import meter's device |
 | Temperature | `weather.forecast_*` entity, otherwise the first `weather.*` entity |
 
@@ -76,7 +76,7 @@ Entity variables that are set override discovered values. Changes to the Energy 
 | `WATER` | Total water sensor (m³ or L; m³ is converted to L) |
 | `TEMPERATURE` | Temperature sensor (°C), or a `weather.*` entity (reads its `temperature` attribute) |
 | `BATTERY` | Battery state of charge sensor (%). |
-| `GAS_PRICE` | Gas price per m³, used for today's gas cost |
+| `GAS_PRICE` | Gas price per m³, used for today's gas cost when Home Assistant has no gas cost statistics |
 
 Entity variables accept a comma-separated list; values are summed (e.g. `ENERGY_IMPORT=sensor.import_t1,sensor.import_t2`). Values that are not valid entity IDs are ignored and logged.
 
@@ -110,7 +110,8 @@ Gauge scales come from daily statistics of the last 30 days and the same date la
 | `solar` | Solar production today (kWh) | `SOLAR` |
 | `self_consumption` | Self-consumed solar energy today (%), as in the Energy dashboard gauge. Battery flows require autodiscovery. | `SOLAR`, `ENERGY_EXPORT` |
 | `self_sufficiency` | Self-sufficiency today (%), as in the Energy dashboard gauge. Battery flows require autodiscovery. | `ENERGY_IMPORT`, `SOLAR` |
-| `gas_cost` | Gas cost today (€) | `GAS`, gas price |
+| `gas_cost` | Gas cost today (€), from Home Assistant cost statistics or `GAS` × `GAS_PRICE` | `GAS` |
+| `electricity_cost` | Grid import cost minus export compensation today (€), from Home Assistant cost statistics | Grid prices in the Energy dashboard |
 | `temperature` | Current temperature (°C) | `TEMPERATURE` |
 | `battery` | Battery state of charge (%) | `BATTERY` |
 

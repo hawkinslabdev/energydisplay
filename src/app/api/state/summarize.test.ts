@@ -9,7 +9,7 @@ const s = (entity_id: string, state: string, unit?: string) => ({
   attributes: { unit_of_measurement: unit },
 });
 
-const none = { power: [], energyImport: [], energyExport: [], solar: [], gas: [], water: [], temperature: [], battery: [], batteryIn: [], batteryOut: [] };
+const none = { power: [], energyImport: [], energyExport: [], solar: [], gas: [], water: [], temperature: [], battery: [], batteryIn: [], batteryOut: [], gasCost: [], electricityCost: [], electricityCompensation: [] };
 const hours = (...changes: number[]) => changes.map((change, start) => ({ start, change }));
 
 test("daily usage is the sum of hourly statistics", () => {
@@ -37,6 +37,7 @@ test("daily usage is the sum of hourly statistics", () => {
     battery_soc: 65,
     gas_cost_today: 4.5,
     gas_price: 2,
+    electricity_cost_today: null,
     grid_net_today: 5.5,
     solar_self_consumed_pct: null,
     self_sufficiency_pct: (1 - 5.5 / 7) * 100,
@@ -80,17 +81,28 @@ test("half scale is a typical day across reference periods", () => {
   assert.deepEqual(reading.ranges, { power_w: 6900, solar_today: 33, gas_today: 4, grid_net_today: 22, gas_cost_today: 6 });
 });
 
+test("costs come from home assistant cost statistics", () => {
+  const reading = summarize(
+    { ...none, gas: ["g"], gasCost: ["gc"], electricityCost: ["c"], electricityCompensation: ["r"] },
+    {},
+    { g: hours(1), gc: hours(0.5, 1), c: hours(2, 1), r: hours(0.5) },
+    9,
+  );
+  assert.equal(reading.gas_cost_today, 1.5);
+  assert.equal(reading.electricity_cost_today, 2.5);
+});
+
 test("energy dashboard preferences map to entities", () => {
   const { entities, gasPrice } = fromPrefs({
     energy_sources: [
-      { type: "grid", stat_energy_from: "sensor.t1", stat_energy_to: "sensor.r1", stat_rate: "sensor.power" },
+      { type: "grid", stat_energy_from: "sensor.t1", stat_energy_to: "sensor.r1", stat_rate: "sensor.power", stat_cost: "sensor.c1" },
       { type: "grid", stat_energy_from: "sensor.t2", stat_energy_to: null },
       { type: "solar", stat_energy_from: "sensor.solar" },
       { type: "battery", stat_energy_from: "sensor.bo", stat_energy_to: "sensor.bi", stat_soc: "sensor.soc" },
       { type: "gas", stat_energy_from: "sensor.gas", number_energy_price: 1.35 },
       { type: "water", stat_energy_from: "external:water" },
     ],
-  });
+  }, { "sensor.r1": "sensor.r1_compensation", "sensor.t2": "sensor.t2_cost", "sensor.gas": "sensor.gas_cost" });
 
   assert.deepEqual(entities, {
     power: ["sensor.power"],
@@ -102,6 +114,9 @@ test("energy dashboard preferences map to entities", () => {
     battery: ["sensor.soc"],
     batteryIn: ["sensor.bi"],
     batteryOut: ["sensor.bo"],
+    gasCost: ["sensor.gas_cost"],
+    electricityCost: ["sensor.c1", "sensor.t2_cost"],
+    electricityCompensation: ["sensor.r1_compensation"],
   });
   assert.equal(gasPrice, 1.35);
 });

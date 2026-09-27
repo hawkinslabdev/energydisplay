@@ -36,6 +36,9 @@ const configured: Entities = {
   battery: list(env.BATTERY),
   batteryIn: [],
   batteryOut: [],
+  gasCost: [],
+  electricityCost: [],
+  electricityCompensation: [],
 };
 
 // A missing entity (404) resolves to undefined, so one removed sensor shows as unavailable.
@@ -91,11 +94,11 @@ function haCommands(commands: ({ type: string } & Record<string, unknown>)[]): P
 }
 
 async function discover() {
-  const [[prefs, registry], states] = await Promise.all([
-    haCommands([{ type: "energy/get_prefs" }, { type: "config/entity_registry/list" }]),
+  const [[prefs, registry, info], states] = await Promise.all([
+    haCommands([{ type: "energy/get_prefs" }, { type: "config/entity_registry/list" }, { type: "energy/info" }]),
     ha<HaState[]>("states"),
   ]);
-  const found = fromPrefs(prefs as Parameters<typeof fromPrefs>[0]);
+  const found = fromPrefs(prefs as Parameters<typeof fromPrefs>[0], (info as { cost_sensors: Record<string, string> }).cost_sensors);
   const weather = pickWeather(states);
   const power = found.entities.power.length
     ? found.entities.power
@@ -148,7 +151,8 @@ function referenceDays(midnight: Date, ids: string[]) {
       types: ["change", "max", "min"],
     });
     const days = haCommands([
-      period(shift(midnight, -30), midnight.toISOString()),
+      // end is inclusive, so stop before today's partial day
+      period(shift(midnight, -30), new Date(midnight.getTime() - 1000).toISOString()),
       period(shift(midnight, -365 - 15), shift(midnight, -365 + 15)),
     ]).then((results) => {
       const merged: Statistics = {};
@@ -188,6 +192,9 @@ async function read() {
     ...entities.water,
     ...entities.batteryIn,
     ...entities.batteryOut,
+    ...entities.gasCost,
+    ...entities.electricityCost,
+    ...entities.electricityCompensation,
   ];
   const midnight = new Date();
   midnight.setHours(0, 0, 0, 0);

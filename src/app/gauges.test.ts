@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import { DEFAULT_BARS, DEFAULT_WHEELS, pickGauges } from "./gauges.ts";
 
-const none = { power: [], energyImport: [], energyExport: [], solar: [], gas: [], water: [], temperature: [], battery: [], batteryIn: [], batteryOut: [] };
+const none = { power: [], energyImport: [], energyExport: [], solar: [], gas: [], water: [], temperature: [], battery: [], batteryIn: [], batteryOut: [], gasCost: [], electricityCost: [], electricityCompensation: [] };
 
 const defaults = [...DEFAULT_WHEELS, ...DEFAULT_BARS];
 const unset = Array(defaults.length).fill(undefined);
