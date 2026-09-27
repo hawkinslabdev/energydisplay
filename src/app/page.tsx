@@ -89,7 +89,7 @@ export default function Home() {
         <div className="mx-8 col-span-2">
           <MeterGauge
             icon="/icons/sun.svg"
-            value={formatRounding(reading.energy_export_today ?? 0)}
+            value={formatRounding(reading.solar_today ?? 0)}
             minValue={0}
             maxValue={35}
             unit="kWh"

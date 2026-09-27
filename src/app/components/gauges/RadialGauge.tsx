@@ -32,13 +32,6 @@ export default function RadialGauge(props: RadialGaugeProps) {
         return String(result);
     };
 
-    // Function to calculate stroke dash offset to start the gauge fill from the correct position
-    const calcDashOffset = (value: number, maxValue: number, radius: number) => {
-        const circumference =
-            2 * Math.PI * calcInnerRadius(radius, calcStrokeWidth(radius));
-        return circumference * (1 - value / maxValue);
-    };
-
     return (
         <svg height={props.radius * 2} width={props.radius * 2}>
             {/* Linear Gradiant for showing gauge fill  */}
@@ -70,7 +63,6 @@ export default function RadialGauge(props: RadialGaugeProps) {
                 strokeWidth={calcStrokeWidth(props.radius)}
                 strokeDasharray={calcDashArray(props.value, props.maxValue, props.radius)}
                 strokeLinecap="round"
-                strokeDashoffset={calcDashOffset(props.value, 0, props.radius)}
                 style={{
                     transition: "0.3s",
                 }}

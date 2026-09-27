@@ -1,5 +1,3 @@
-import Image from 'next/image'
-
 
 interface MeterGaugeProps {
     icon: string;
@@ -46,7 +44,7 @@ export default function MeterGauge(props: MeterGaugeProps) {
             <div className="flex flex-col space-y-2">
                 <div className="flex items-center space-x-2">
                     <div className="flex">
-                        <Image width={40} height={40} src={props.icon} alt="Image description" />
+                        <img width={40} height={40} src={props.icon} alt="" />
                     </div>
                     <div className="flex">
                         <h1 className="text-6xl font-semibold">{getWholeValue(props.value)}</h1>
