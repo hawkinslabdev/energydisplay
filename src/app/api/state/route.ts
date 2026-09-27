@@ -106,14 +106,20 @@ let discovery: ReturnType<typeof discover> | undefined;
 async function resolveEntities(): Promise<{ entities: Entities; gasPrice: number | null }> {
   const parsed = parseFloat(env.GAS_PRICE ?? "");
   const envPrice = Number.isFinite(parsed) ? parsed : null;
-  if (env.AUTODISCOVER !== "true") {
+  if (env.AUTODISCOVER === "false") {
     return { entities: configured, gasPrice: envPrice };
   }
   discovery ??= discover().catch((error) => {
     discovery = undefined;
     throw error;
   });
-  const found = await discovery;
+  // Without an Energy dashboard (or while Home Assistant is down) the entity variables still work;
+  // discovery is retried on the next request.
+  const found = await discovery.catch((error) => {
+    console.warn(`Autodiscovery failed: ${error.message}`);
+    return undefined;
+  });
+  if (!found) return { entities: configured, gasPrice: envPrice };
   const discovered: Partial<Entities> = found.entities;
   const entities = Object.fromEntries(
     Object.entries(configured).map(([key, ids]) => [
