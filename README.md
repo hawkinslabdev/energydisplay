@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/icon.svg" alt="Logo" width="120" height="120">
+</p>
+
 <h1 align="center">Energy Display for Home Assistant</h1>
 
 <p align="center">
@@ -13,14 +17,14 @@ A self-hosted wall display for live power and daily energy, gas and water usage.
 ## Run
 
 1. Create a long-lived access token in Home Assistant (**Profile** > **Security**).
-2. Copy `.env.example` to `.env` and set the Home Assistant URL, token and entity IDs.
-3. Start the container:
+2. Download `docker-compose.yml` and `.env`, set the Home Assistant URL, token and entity IDs in `.env`, then start:
 
    ```bash
+   curl -fsSL https://raw.githubusercontent.com/hawkinslabdev/ha_energydisplay/HEAD/install.sh | sh
    docker compose up -d
    ```
 
-4. Open http://localhost:8001.
+3. Open http://localhost:9123.
 
 ## Configuration
 

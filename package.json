@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 8001",
+    "dev": "next dev -p 9123",
     "build": "next build",
-    "start": "next start -p 8001",
+    "start": "next start -p 9123",
     "lint": "eslint .",
     "test": "node --test src/**/*.test.ts"
   },

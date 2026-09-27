@@ -4,5 +4,5 @@ services:
     build: .
     env_file: .env
     ports:
-      - "8001:8001"
+      - "9123:9123"
     restart: unless-stopped
