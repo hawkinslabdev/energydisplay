@@ -1,17 +1,17 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-// Framing is limited to this app and the Home Assistant origin (for an iframe card or panel).
-// FRAME_ANCESTORS adds origins, e.g. when Home Assistant is reached on another hostname.
+import { logBlockedFrame } from "./frameLog";
+
+// Framing is limited to this app, the Home Assistant origin and FRAME_ANCESTORS, e.g. when Home Assistant is reached on another hostname.
 const frameAncestors = () => {
   const origins = ["'self'"];
   try {
     if (process.env.HA_URL) origins.push(new URL(process.env.HA_URL).origin);
   } catch {}
   origins.push(...(process.env.FRAME_ANCESTORS?.split(/[\s,]+/).filter(Boolean) ?? []));
-  return origins.join(" ");
+  return origins;
 };
 
-// ponytail: 'unsafe-inline' scripts for Next's inline bootstrap; nonces need per-request rendering.
 const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "production" ? "" : " 'unsafe-eval'"}`,
@@ -22,10 +22,10 @@ const csp = [
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'none'",
-  `frame-ancestors ${frameAncestors()}`,
+  `frame-ancestors ${frameAncestors().join(" ")}`,
 ].join("; ");
 
-// Everything else gets a bare plain-text response, like Traefik's, instead of a rendered page.
+// Everything else gets a bare plain-text response, instead of a rendered page.
 const ICONS = ["arrow-down", "arrow-up", "battery", "flame", "sun", "thermometer"];
 const ROUTES = ["/", "/api/state", "/icon.svg", ...ICONS.map((icon) => `/icons/${icon}.svg`)];
 // Next answers misses under /_next/static/ in plain text itself; dev tooling needs the rest of /_next/.
@@ -39,6 +39,7 @@ const plain = (status: number, text: string, extra: Record<string, string> = {})
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  if (pathname === "/") logBlockedFrame(request.headers, request.nextUrl.origin, frameAncestors());
   const response = !ROUTES.includes(pathname) && !PREFIXES.some((prefix) => pathname.startsWith(prefix))
     ? plain(404, "404 page not found")
     : !["GET", "HEAD"].includes(request.method)

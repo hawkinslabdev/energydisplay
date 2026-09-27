@@ -40,8 +40,7 @@ export default function Home() {
   useLayoutEffect(() => {
     try {
       const cached = localStorage.getItem(CACHE_KEY);
-      // A lazy useState initializer would mismatch the prerendered HTML.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- a lazy useState initializer would mismatch the prerendered HTML
       if (cached) setReading(JSON.parse(cached));
     } catch {}
   }, []);

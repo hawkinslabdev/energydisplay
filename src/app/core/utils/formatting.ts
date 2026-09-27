@@ -1,10 +1,5 @@
 
-/**
- * Formats a number to two decimal places with proper rounding.
- * 
- * @param value - The number to be formatted.
- * @returns The formatted number rounded to two decimal places.
- */
+/** Rounds a number to two decimal places. */
 export const formatRounding = (value: number): number => {
     // Round the value to two decimal places using EPSILON to avoid floating point issues
     const roundedValue = Math.round((value + Number.EPSILON) * 100) / 100;

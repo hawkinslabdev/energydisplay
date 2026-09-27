@@ -68,10 +68,7 @@ export const DEFAULT_WHEELS: WheelName[] = ["power", "water", "gas"];
 
 export const isWheel = (name: string): name is WheelName => name in WHEELS;
 
-/**
- * Explicit WHEEL1..3 values are kept. An unset wheel uses its default when that is configured,
- * otherwise the first configured option not already shown.
- */
+/** Explicit WHEEL1..3 values are kept; an unset wheel uses its default when configured, otherwise the first configured option not already shown. */
 export function pickWheels(explicit: (string | undefined)[], entities: Entities): WheelName[] {
     const names = explicit.map((name) => name?.trim().toLowerCase() ?? "");
     const configured = (wheel: WheelName) => WHEELS[wheel].requires.every((key) => entities[key].length);

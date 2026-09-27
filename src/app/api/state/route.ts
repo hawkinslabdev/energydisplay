@@ -87,7 +87,6 @@ function haCommands(types: string[]): Promise<unknown[]> {
   });
 }
 
-// ponytail: discovered once per process, restart the container after changing the Energy dashboard.
 async function discover() {
   const [[prefs, registry], states] = await Promise.all([
     haCommands(["energy/get_prefs", "config/entity_registry/list"]),
@@ -113,8 +112,7 @@ async function resolveEntities(): Promise<{ entities: Entities; gasPrice: number
     discovery = undefined;
     throw error;
   });
-  // Without an Energy dashboard (or while Home Assistant is down) the entity variables still work;
-  // discovery is retried on the next request.
+  // Without an Energy dashboard or while Home Assistant is down, entity variables still work and discovery is retried on the next request.
   const found = await discovery.catch((error) => {
     console.warn(`Autodiscovery failed: ${error.message}`);
     return undefined;
@@ -172,8 +170,7 @@ async function read() {
   };
 }
 
-// Concurrent and rapid requests share one Home Assistant round trip, so the endpoint cannot be
-// used to flood Home Assistant.
+// Concurrent and rapid requests share one Home Assistant round trip, so the endpoint cannot flood Home Assistant.
 const CACHE_MS = 2000;
 let cached: { at: number; result: ReturnType<typeof read> } | undefined;
 

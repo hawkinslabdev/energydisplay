@@ -10,8 +10,7 @@ interface TooltipProps {
     children: React.ReactNode;
 }
 
-// Setup help for desktop. Tailwind's hover variant only applies on devices that can hover,
-// so a wall tablet never shows it; keyboard focus shows it too.
+// Setup help for desktop: Tailwind's hover variant only applies on devices that can hover, so a wall tablet never shows it; keyboard focus does.
 export default function Tooltip(props: TooltipProps) {
     return (
         <div tabIndex={0} className="group relative rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-[#8d37ff]">

@@ -132,7 +132,6 @@ export interface RegistryEntry {
 }
 
 // Grid power from the meter device itself, for an Energy dashboard without a grid power sensor.
-// ponytail: shortest ID picks the total over per-phase sensors (_l1, _l2, _l3); POWER overrides a wrong guess.
 export const pickDevicePower = (meter: string | undefined, registry: RegistryEntry[], states: HaState[]) => {
   const device = registry.find((entry) => entry.entity_id === meter)?.device_id;
   if (!device) return undefined;
