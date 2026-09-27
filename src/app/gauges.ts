@@ -77,10 +77,10 @@ export const GAUGES = {
     },
     electricity_cost: {
         field: "electricity_cost_today",
-        icon: ["M4 10h12", "M4 14h9", "M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"], requires: ["electricityCost"], maxValue: 10, unit: "€", background: "#4d4213", highlight: "#ffd23f",
+        icon: ["M4 10h12", "M4 14h9", "M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"], requires: ["energyImport"], maxValue: 10, unit: "€", background: "#4d4213", highlight: "#ffd23f",
         title: "Electricity cost today",
-        detail: "Grid import cost minus export compensation since midnight. Half scale: typical day of the last 30 days and the same season last year.",
-        source: "Grid prices in the Home Assistant Energy dashboard",
+        detail: "Grid import cost minus export compensation since midnight, from Home Assistant cost statistics or the configured rates. Half scale: typical day of the last 30 days and the same season last year.",
+        source: "Grid prices in the Home Assistant Energy dashboard, or ENERGY_IMPORT × ELECTRICITY_PRICE − ENERGY_EXPORT × ELECTRICITY_COMPENSATION",
     },
     temperature: {
         field: "temperature",

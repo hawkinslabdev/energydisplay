@@ -6,7 +6,9 @@ import { logBlockedFrame } from "./frameLog";
 const frameAncestors = () => {
   const origins = ["'self'"];
   try {
-    if (process.env.HA_URL) origins.push(new URL(process.env.HA_URL).origin);
+    // HA_URL stays supported as an alias
+    const url = process.env.HOMEASSISTANT_URL || process.env.HA_URL;
+    if (url) origins.push(new URL(url).origin);
   } catch {}
   origins.push(...(process.env.FRAME_ANCESTORS?.split(/[\s,]+/).filter(Boolean) ?? []));
   return origins;
@@ -26,8 +28,7 @@ const csp = [
 ].join("; ");
 
 // Everything else gets a bare plain-text response, instead of a rendered page.
-const ICONS = ["arrow-down", "arrow-up"];
-const ROUTES = ["/", "/api/state", "/icon.svg", ...ICONS.map((icon) => `/icons/${icon}.svg`)];
+const ROUTES = ["/", "/api/state", "/icon.svg"];
 // Next answers misses under /_next/static/ in plain text itself; dev tooling needs the rest of /_next/.
 const PREFIXES = process.env.NODE_ENV === "production" ? ["/_next/static/"] : ["/_next/", "/__nextjs"];
 

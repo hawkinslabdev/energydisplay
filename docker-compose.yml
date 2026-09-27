@@ -9,7 +9,12 @@ services:
     read_only: true
     tmpfs:
       - /tmp
+    volumes:
+      - data:/data
     cap_drop:
       - ALL
     security_opt:
       - no-new-privileges:true
+
+volumes:
+  data:

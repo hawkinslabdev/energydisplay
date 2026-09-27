@@ -115,6 +115,7 @@ export function summarize(
   statistics: Statistics,
   gasPrice: number | null,
   days: Statistics = {},
+  electricity: { price: number; compensation: number } | null = null,
 ): Reading {
   const factor = (id: string) =>
     FACTOR[current[id]?.attributes?.unit_of_measurement ?? ""] ?? 1;
@@ -139,12 +140,13 @@ export function summarize(
   // cost statistics from home assistant, else gas times GAS_PRICE
   const gasCost = total(entities.gasCost.map(today))
     ?? (gasToday === null || gasPrice === null ? null : gasToday * gasPrice);
+  const imported = scaledToday(entities.energyImport);
+  const exported = scaledToday(entities.energyExport);
+  // cost statistics from home assistant, else import and export at ELECTRICITY_PRICE
   const electricityCost = total([
     ...entities.electricityCost.map(today),
     ...entities.electricityCompensation.map((id) => today(id) === undefined ? undefined : -today(id)!),
-  ]);
-  const imported = scaledToday(entities.energyImport);
-  const exported = scaledToday(entities.energyExport);
+  ]) ?? (electricity && imported !== null ? imported * electricity.price - (exported ?? 0) * electricity.compensation : null);
   const solar = scaledToday(entities.solar);
 
   const flows = {
@@ -174,7 +176,9 @@ export function summarize(
     gas_cost_today: typical(byStart(days, entities.gasCost, (_, row) => row.change ?? 0).values())
       ?? (gasScale && gasPrice ? gasScale * gasPrice : undefined),
     electricity_cost_today: typical(byStart(days, [...entities.electricityCost, ...entities.electricityCompensation], (id, row) =>
-      (entities.electricityCompensation.includes(id) ? -1 : 1) * (row.change ?? 0)).values()),
+      (entities.electricityCompensation.includes(id) ? -1 : 1) * (row.change ?? 0)).values())
+      ?? (electricity ? typical(byStart(days, [...entities.energyImport, ...entities.energyExport], (id, row) =>
+        (entities.energyExport.includes(id) ? -electricity.compensation : electricity.price) * change(id, row)).values()) : undefined),
   };
 
   return {

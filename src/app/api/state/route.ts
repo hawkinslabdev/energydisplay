@@ -13,10 +13,30 @@ import {
   pickWeather,
   summarize,
 } from "./summarize";
+import { readHomeWizard } from "./homewizard";
 
 export const dynamic = "force-dynamic";
 
 const env = process.env;
+// HA_URL and HA_TOKEN stay supported as aliases
+const haUrl = env.HOMEASSISTANT_URL || env.HA_URL;
+const haToken = env.HOMEASSISTANT_TOKEN || env.HA_TOKEN;
+
+const adapter = env.ADAPTER?.trim().toLowerCase() || "default";
+if (!["default", "homeassistant", "haos", "homewizard"].includes(adapter)) {
+  console.warn(`Unknown ADAPTER ${adapter}; using Home Assistant`);
+}
+const homewizard = adapter === "homewizard";
+
+const price = (value?: string) => {
+  const parsed = parseFloat(value ?? "");
+  return Number.isFinite(parsed) ? parsed : null;
+};
+const envPrice = price(env.GAS_PRICE);
+const electricityPrice = price(env.ELECTRICITY_PRICE);
+const electricity = electricityPrice === null
+  ? null
+  : { price: electricityPrice, compensation: price(env.ELECTRICITY_COMPENSATION) ?? 0 };
 
 // Entity IDs end up in Home Assistant URLs; anything that is not a plain entity ID is dropped.
 const list = (value?: string) =>
@@ -45,8 +65,8 @@ const configured: Entities = {
 async function ha<T>(path: string): Promise<T>;
 async function ha<T>(path: string, optional: true): Promise<T | undefined>;
 async function ha<T>(path: string, optional = false): Promise<T | undefined> {
-  const response = await fetch(`${env.HA_URL}/api/${path}`, {
-    headers: { Authorization: `Bearer ${env.HA_TOKEN}` },
+  const response = await fetch(`${haUrl}/api/${path}`, {
+    headers: { Authorization: `Bearer ${haToken}` },
     cache: "no-store",
     signal: AbortSignal.timeout(10_000),
   });
@@ -60,7 +80,7 @@ async function ha<T>(path: string, optional = false): Promise<T | undefined> {
 // Runs websocket commands in one authenticated session; results come back in command order.
 function haCommands(commands: ({ type: string } & Record<string, unknown>)[]): Promise<unknown[]> {
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket(`${env.HA_URL?.replace(/^http/, "ws")}/api/websocket`);
+    const ws = new WebSocket(`${haUrl?.replace(/^http/, "ws")}/api/websocket`);
     const results: unknown[] = [];
     let pending = commands.length;
     const done = (settle: () => void) => {
@@ -76,11 +96,11 @@ function haCommands(commands: ({ type: string } & Record<string, unknown>)[]): P
     ws.onmessage = (event) => {
       const message = JSON.parse(String(event.data));
       if (message.type === "auth_required") {
-        ws.send(JSON.stringify({ type: "auth", access_token: env.HA_TOKEN }));
+        ws.send(JSON.stringify({ type: "auth", access_token: haToken }));
       } else if (message.type === "auth_ok") {
         commands.forEach((command, i) => ws.send(JSON.stringify({ ...command, id: i + 1 })));
       } else if (message.type === "auth_invalid") {
-        done(() => reject(new Error("Home Assistant rejected HA_TOKEN")));
+        done(() => reject(new Error("Home Assistant rejected HOMEASSISTANT_TOKEN")));
       } else if (message.type === "result") {
         if (!message.success) {
           done(() => reject(new Error(`${commands[message.id - 1].type}: ${message.error?.message}`)));
@@ -109,8 +129,6 @@ async function discover() {
 let discovery: ReturnType<typeof discover> | undefined;
 
 async function resolveEntities(): Promise<{ entities: Entities; gasPrice: number | null }> {
-  const parsed = parseFloat(env.GAS_PRICE ?? "");
-  const envPrice = Number.isFinite(parsed) ? parsed : null;
   if (env.AUTODISCOVER === "false") {
     return { entities: configured, gasPrice: envPrice };
   }
@@ -181,7 +199,7 @@ const layout = (entities: Entities) => {
   return { wheels: gauges.slice(0, 3), bars: gauges.slice(3) };
 };
 
-async function read() {
+async function fromHomeAssistant(midnight: Date) {
   const { entities, gasPrice } = await resolveEntities();
   const ids = [...new Set(Object.values(entities).flat())];
   const totals = [
@@ -196,9 +214,6 @@ async function read() {
     ...entities.electricityCost,
     ...entities.electricityCompensation,
   ];
-  const midnight = new Date();
-  midnight.setHours(0, 0, 0, 0);
-
   const [current, [statistics], days] = await Promise.all([
     Promise.all(ids.map((id) => ha<HaState>(`states/${id}`, true))),
     totals.length
@@ -212,9 +227,25 @@ async function read() {
       : [{}],
     referenceDays(midnight, [...totals, ...entities.power]),
   ]);
-  const states = byId(current);
+  return { entities, gasPrice, states: byId(current), statistics: statistics as Statistics, days };
+}
+
+async function fromHomeWizard(midnight: Date) {
+  const { entities, states, today, days } = await readHomeWizard(midnight);
+  // entity variables name home assistant entities, so only meter fields count
+  const all = Object.fromEntries(
+    Object.keys(configured).map((key) => [key, entities[key as keyof Entities] ?? []]),
+  ) as unknown as Entities;
+  return { entities: all, gasPrice: envPrice, states, statistics: today, days };
+}
+
+async function read() {
+  const midnight = new Date();
+  midnight.setHours(0, 0, 0, 0);
+  const { entities, gasPrice, states, statistics, days } = await (homewizard ? fromHomeWizard : fromHomeAssistant)(midnight);
+  const ids = [...new Set(Object.values(entities).flat())];
   return {
-    ...summarize(entities, states, statistics as Statistics, gasPrice, days),
+    ...summarize(entities, states, statistics, gasPrice, days, electricity),
     ...layout(entities),
     // Troubleshooting: the entity IDs in use (set or discovered), and those without a usable value.
     entities,
@@ -222,7 +253,7 @@ async function read() {
   };
 }
 
-// Concurrent and rapid requests share one Home Assistant round trip, so the endpoint cannot flood Home Assistant.
+// Concurrent and rapid requests share one upstream round trip, so the endpoint cannot flood Home Assistant or the meter.
 const CACHE_MS = 2000;
 let cached: { at: number; result: ReturnType<typeof read> } | undefined;
 
@@ -236,7 +267,7 @@ export async function GET() {
     // Details stay in the server log; the response carries no URLs, tokens or upstream messages.
     console.error(error);
     return NextResponse.json(
-      { error: "Home Assistant unavailable; details in the container log" },
+      { error: `${homewizard ? "HomeWizard" : "Home Assistant"} unavailable; details in the container log` },
       { status: 502, headers: { "Cache-Control": "no-store" } },
     );
   }

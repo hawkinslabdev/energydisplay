@@ -10,7 +10,7 @@ const unset = Array(defaults.length).fill(undefined);
 
 test("unset positions skip options without entities", () => {
   const entities = { ...none, energyImport: ["i"], energyExport: ["e"], solar: ["s"], gas: ["g"] };
-  assert.deepEqual(pickGauges(unset, defaults, entities), ["grid", "self_consumption", "gas", "gas_cost", "solar", "self_sufficiency", "battery"]);
+  assert.deepEqual(pickGauges(unset, defaults, entities), ["grid", "self_consumption", "gas", "gas_cost", "solar", "self_sufficiency", "electricity_cost"]);
   assert.deepEqual(pickGauges(["power", undefined, "bogus", undefined, "temperature"], defaults, entities).slice(0, 5), ["power", "grid", "gas", "gas_cost", "temperature"]);
   assert.deepEqual(pickGauges(unset, defaults, none), defaults);
 });

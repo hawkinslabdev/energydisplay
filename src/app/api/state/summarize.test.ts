@@ -92,6 +92,20 @@ test("costs come from home assistant cost statistics", () => {
   assert.equal(reading.electricity_cost_today, 2.5);
 });
 
+test("electricity cost falls back to configured prices", () => {
+  const reading = summarize(
+    { ...none, energyImport: ["i"], energyExport: ["x"] },
+    { x: s("x", "0", "Wh") },
+    { i: hours(2, 3), x: hours(1000) },
+    null,
+    { i: [{ start: 1, change: 10 }, { start: 2, change: 6 }], x: [{ start: 1, change: 2000 }] },
+    { price: 0.3, compensation: 0.1 },
+  );
+  assert.equal(reading.electricity_cost_today, 5 * 0.3 - 1 * 0.1);
+  // days: 10 × 0.3 − 2 × 0.1 = 2.8 and 6 × 0.3 = 1.8, twice the median
+  assert.equal(reading.ranges.electricity_cost_today, 2.8 + 1.8);
+});
+
 test("energy dashboard preferences map to entities", () => {
   const { entities, gasPrice } = fromPrefs({
     energy_sources: [

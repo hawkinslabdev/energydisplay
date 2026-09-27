@@ -7,10 +7,13 @@ import ComparisonGauge from "./components/gauges/ComparisonGauge";
 import MeterGauge from "./components/gauges/MeterGauge";
 import RadialGauge from "./components/gauges/RadialGauge";
 import Tooltip from "./components/shared/Tooltip";
+import { demoReading } from "./demo";
 import { DEFAULT_BARS, DEFAULT_WHEELS, GAUGES, type GaugeName } from "./gauges";
 
 const POLL_MS = 5000;
 const CACHE_KEY = "reading";
+// static demo build, see DEMO in next.config.mjs
+const DEMO = process.env.NEXT_PUBLIC_DEMO === "true";
 
 type State = Reading & { wheels: GaugeName[]; bars: GaugeName[]; entities: Entities; unavailable: string[] };
 
@@ -65,6 +68,7 @@ export default function Home() {
   useEffect(() => {
     const poll = async () => {
       try {
+        if (DEMO) return setReading(demoReading(new Date()));
         const response = await fetch("/api/state", { cache: "no-store" });
         const body = await response.json();
         if (!response.ok) throw new Error(body.error);
