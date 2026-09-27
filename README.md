@@ -11,28 +11,40 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-EUPL--1.2-blue.svg" alt="License"></a>
 </p>
 
-A self-hosted wall display for live power and daily energy, gas and water usage. It reads from Home Assistant or directly from a HomeWizard P1 Meter.
+A self-hosted wall display for real-time power and daily energy, gas, and water usage. Reads directly from Home Assistant or a HomeWizard P1 Meter.
 
 ![Energy Display](/docs/hero.png)
 
-## Run
+## Quick Start
 
-1. For Home Assistant, create a long-lived access token (**Profile** > **Security**). For a HomeWizard P1 Meter, note its IP address.
-2. Download `docker-compose.yml` and `.env`. The installer asks for the data source and its connection details:
+### 1. Requirements
 
-   ```bash
-   curl -fsSL https://raw.githubusercontent.com/hawkinslabdev/ha_energydisplay/HEAD/install.sh | sh
-   ```
-3. Start the dashboard with `docker compose up -d`.
-4. Open http://localhost:9123.
+Gather your credentials before starting:
 
-## Demo
+- **Home Assistant:** Server URL and a long-lived access token (**Profile** > **Security**).
+- **HomeWizard P1:** IP address of the P1 Meter on your local network.
 
-`DEMO=true npm run build` builds a static export in `out/` with generated data that follows the time of day. `BASE_PATH` sets the URL prefix, e.g. `/ha_energydisplay`. `.github/workflows/pages.yml` publishes it to GitHub Pages on every push to `main`.
+That's all you need to get started.
+
+### 2. Install and Run
+
+Run the interactive setup script to generate `.env` and `docker-compose.yml`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hawkinslabdev/ha_energydisplay/HEAD/install.sh | sh
+```
+
+Start the application:
+
+```bash
+docker compose up -d
+```
+
+Access the dashboard at `http://localhost:9123`.
 
 ## Configuration
 
-Settings are read from `.env`. `ADAPTER` selects the data source: Home Assistant (default) or a HomeWizard P1 Meter. Before you continue, make sure to setup the following section:
+All configuration is managed through environment variables in `.env`.
 
 <b>General settings</b>
 
@@ -49,18 +61,21 @@ Based on your choice, you can change the settings per adapter:
 
 <br>
 
+`ADAPTER=default` reads entities and statistics from Home Assistant.
+
 **Connection**
 
 | Variable | Description |
 | --- | --- |
 | `HOMEASSISTANT_URL` | Home Assistant base URL, e.g. `http://homeassistant.local:8123`. Alias: `HA_URL`. |
 | `HOMEASSISTANT_TOKEN` | Long-lived access token. Alias: `HA_TOKEN`. |
+| `AUTODISCOVER` | `false` disables autodiscovery. Default: `true`. |
 
-Both are required. Entities come from autodiscovery, entity variables, or both.
+URL and token are required. Entities come from autodiscovery, entity variables, or both.
 
 **Autodiscovery**
 
-Autodiscovery is on by default (`AUTODISCOVER=false` disables it) and reads entities from Home Assistant once per container start:
+Autodiscovery runs at startup (`AUTODISCOVER=false` to disable). It pulls configuration directly from your Home Assistant Energy Dashboard for grid, solar, gas, water, battery, and weather entities. Manual entity variables take precedence over autodiscovered values.
 
 | Value | Source |
 | --- | --- |
@@ -68,9 +83,9 @@ Autodiscovery is on by default (`AUTODISCOVER=false` disables it) and reads enti
 | Power | Energy dashboard grid power; otherwise the power sensor on the grid import meter's device |
 | Temperature | `weather.forecast_*` entity, otherwise the first `weather.*` entity |
 
-Entity variables that are set override discovered values. Changes to the Energy dashboard apply after a container restart. Cost statistics start when a price is set in the Energy dashboard and are not backfilled. When discovery fails, for example without an Energy dashboard, a warning is logged and only entity variables are used.
-
 **Entities**
+
+Explicitly configure or override entities (supports comma-separated lists to sum multiple sensors):
 
 | Variable | Description |
 | --- | --- |
@@ -82,15 +97,6 @@ Entity variables that are set override discovered values. Changes to the Energy 
 | `WATER` | Total water sensor (m³ or L; m³ is converted to L) |
 | `TEMPERATURE` | Temperature sensor (°C), or a `weather.*` entity (reads its `temperature` attribute) |
 | `BATTERY` | Battery state of charge sensor (%). |
-| `GAS_PRICE` | Gas price per m³, used for today's gas cost when Home Assistant has no gas cost statistics |
-| `ELECTRICITY_PRICE` | Price per kWh imported, used for today's electricity cost when Home Assistant has no grid cost statistics |
-| `ELECTRICITY_COMPENSATION` | Price per kWh exported, subtracted from the electricity cost. Default: 0. |
-
-Entity variables accept a comma-separated list; values are summed (e.g. `ENERGY_IMPORT=sensor.import_t1,sensor.import_t2`). Values that are not valid entity IDs are ignored and logged.
-
-Daily totals are the sum of hourly `change` values from Home Assistant long-term statistics since midnight, matching the Energy dashboard. Totals cover completed hours only and update on the hour. Configured sensors require a `state_class` (`total` or `total_increasing`) to have statistics.
-
-Gauge scales come from daily statistics of the last 30 days and the same date last year ±15 days. Daily totals use twice the median day, so a half-filled gauge is a typical day. Power uses the highest value reached. Without statistics, fixed defaults apply.
 
 </details>
 
@@ -101,12 +107,14 @@ Gauge scales come from daily statistics of the last 30 days and the same date la
 
 `ADAPTER=homewizard` reads a HomeWizard P1 Meter directly, without Home Assistant.
 
+**Connection**
+
 | Variable | Description |
 | --- | --- |
 | `HOMEWIZARD_HOST` | IP address or hostname of the P1 Meter |
-| `HOMEWIZARD_TOKEN` | API v2 token. Unset: API v1 over HTTP, which requires **Local API** in the HomeWizard app and is being phased out by HomeWizard. |
-| `GAS_PRICE` | Gas price per m³, used for today's gas cost |
-| `ELECTRICITY_PRICE`, `ELECTRICITY_COMPENSATION` | Price per kWh imported and exported, used for today's electricity cost. Compensation defaults to 0. |
+| `HOMEWIZARD_TOKEN` | API v2 token. Unset: API v1 over HTTP, which requires **Local API** in the HomeWizard app. |
+
+**Note:** HomeWizard is retiring API v1. It works until HomeWizard ends support; no end date is announced. Use API v2 by setting `HOMEWIZARD_TOKEN`.
 
 API v2 token, after pressing the button on the P1 Meter:
 
@@ -116,22 +124,26 @@ curl -k -X POST https://<host>/api/user -H 'Content-Type: application/json' -H '
 
 API v2 connections are verified against the HomeWizard CA certificate.
 
-| Value | P1 Meter field |
-| --- | --- |
-| Power | `power_w` (v1: `active_power_w`) |
-| Energy import and export | `energy_import_kwh`, `energy_export_kwh` (v1: `total_power_import_kwh`, `total_power_export_kwh`) |
-| Gas | First `gas_meter` in `external` (v1 fallback: `total_gas_m3`) |
-| Water | First `water_meter` in `external` |
-
-Solar, temperature and battery have no P1 Meter source; their positions use the fallback described under [Wheels and bars](#configuration).
-
-Daily totals are the current counter minus the last reading of the previous day, or the first reading of today, and include the current hour. Readings are stored per day in `DATA_DIR/homewizard.json` (`/data`, the `data` volume in `docker-compose.yml`) and give gauge scales as with Home Assistant statistics. Readings are taken while the display polls; power peaks cover those periods only. Without the volume, daily totals restart from the first reading after a container restart.
+The P1 Meter provides power, grid import and export, and gas and water from meters connected to it. Solar, temperature and battery are not available.
 
 </details>
 
+You can change various settings:
+
+<details>
+<summary>Prices</summary>
+
 <br>
 
-If you'd like to tweak the frontend, you can do so with the following settings:
+Used for gas and electricity cost with both adapters. With Home Assistant, cost statistics from the Energy dashboard take precedence.
+
+| Variable | Description |
+| --- | --- |
+| `GAS_PRICE` | Price per m³ gas |
+| `ELECTRICITY_PRICE` | Price per kWh imported |
+| `ELECTRICITY_COMPENSATION` | Price per kWh exported, subtracted from the electricity cost. Default: 0. |
+
+</details>
 
 <details>
 <summary>Wheels and bars</summary>
@@ -162,7 +174,7 @@ If you'd like to tweak the frontend, you can do so with the following settings:
 | `temperature` | Current temperature (°C) | `TEMPERATURE` |
 | `battery` | Battery state of charge (%) | `BATTERY` |
 
-Any value is valid in any position. An unset or unknown value uses the position's default. A default whose entities are not configured is replaced by the first configured option not already shown. A bar whose entities are not configured is hidden. Negative values, such as grid export or net compensation, fill in reverse.
+Unconfigured metrics fall back to available options or hide automatically.
 
 </details>
 

@@ -3,7 +3,7 @@
 # Usage: curl -fsSL https://raw.githubusercontent.com/hawkinslabdev/ha_energydisplay/HEAD/install.sh | sh
 set -e
 
-BASE=https://raw.githubusercontent.com/hawkinslabdev/ha_energydisplay/HEAD
+BASE=https://raw.githubusercontent.com/hawkinslabdev/ha_energydisplay/HEAD/energydisplay
 
 fetch() {
   if [ -e "$2" ]; then

@@ -1,6 +1,7 @@
 # Build
 
 ```bash
+cd energydisplay
 npm install
 cp .env.example .env
 npm run dev

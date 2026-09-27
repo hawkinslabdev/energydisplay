@@ -2,11 +2,11 @@ import type { Entities, Reading } from "./api/state/summarize";
 
 interface Gauge {
     field: keyof Reading;
-    /** Stroke paths on a 24x24 grid, drawn in the highlight color. */
+    /** Stroke paths on a 24x24 grid. */
     icon: string[];
-    /** Entities the gauge needs; unset positions skip options whose entities are missing. */
+    /** Entities the gauge needs; missing entities cause the gauge to be skipped. */
     requires: (keyof Entities)[];
-    /** Full scale without daily statistics. */
+    /** Full scale fallback when daily statistics are unavailable. */
     maxValue: number;
     unit: string;
     background: string;
@@ -17,7 +17,6 @@ interface Gauge {
     source: string;
 }
 
-// Options for WHEEL1-WHEEL3 and BAR1-BAR4.
 export const GAUGES = {
     power: {
         field: "power_w",
@@ -30,28 +29,28 @@ export const GAUGES = {
         field: "water_today_l",
         icon: ["M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"], requires: ["water"], maxValue: 100, unit: "L", background: "#1b3b50", highlight: "#3dbfff",
         title: "Water today",
-        detail: "Total water usage recorded since midnight. Half scale: typical day of the last 30 days and the same season last year.",
+        detail: "Total water usage recorded since midnight. Midpoint benchmark: typical day of the last 30 days and the same season last year.",
         source: "WATER",
     },
     gas: {
         field: "gas_today",
         icon: ["M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"], requires: ["gas"], maxValue: 10, unit: "m3", background: "#501228", highlight: "#fd2d86",
         title: "Gas today",
-        detail: "Total gas consumption recorded since midnight. Half scale: typical day of the last 30 days and the same season last year.",
+        detail: "Total gas consumption recorded since midnight. Midpoint benchmark: typical day of the last 30 days and the same season last year.",
         source: "GAS",
     },
     grid: {
         field: "grid_net_today",
         icon: ["M12 2v20", "M2 5h20", "M3 3v2", "M7 3v2", "M17 3v2", "M21 3v2", "M19 5l-7 7-7-7"], requires: ["energyImport", "energyExport"], maxValue: 20, unit: "kWh", background: "#1f2a50", highlight: "#6d8bff",
         title: "Grid neutrality",
-        detail: "Net imported from the grid (positive) or net exported to the grid (negative) since midnight. Half scale: typical day of the last 30 days and the same season last year.",
+        detail: "Net imported from the grid (positive) or net exported to the grid (negative) since midnight. Midpoint benchmark: typical day of the last 30 days and the same season last year.",
         source: "ENERGY_IMPORT − ENERGY_EXPORT",
     },
     solar: {
         field: "solar_today",
         icon: ["M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0z", "M12 2v2", "M12 20v2", "M4.93 4.93l1.41 1.41", "M17.66 17.66l1.41 1.41", "M2 12h2", "M20 12h2", "M6.34 17.66l-1.41 1.41", "M19.07 4.93l-1.41 1.41"], requires: ["solar"], maxValue: 35, unit: "kWh", background: "#314d2c", highlight: "#5fda35",
         title: "Solar today",
-        detail: "Total solar energy generated since midnight. Half scale: typical day of the last 30 days and the same season last year.",
+        detail: "Total solar energy generated since midnight. Midpoint benchmark: typical day of the last 30 days and the same season last year.",
         source: "SOLAR",
     },
     self_consumption: {
@@ -72,14 +71,14 @@ export const GAUGES = {
         field: "gas_cost_today",
         icon: ["M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"], requires: ["gas"], maxValue: 10, unit: "€", background: "#595959", highlight: "#ffffff",
         title: "Gas cost today",
-        detail: "Gas cost since midnight, from Home Assistant cost statistics or the configured rate. Half scale: typical day of the last 30 days and the same season last year.",
+        detail: "Gas cost since midnight, from Home Assistant cost statistics or the configured rate. Midpoint benchmark: typical day of the last 30 days and the same season last year.",
         source: "Gas price in the Home Assistant Energy dashboard, or GAS × GAS_PRICE",
     },
     electricity_cost: {
         field: "electricity_cost_today",
         icon: ["M4 10h12", "M4 14h9", "M19 6a7.7 7.7 0 0 0-5.2-2A7.9 7.9 0 0 0 6 12c0 4.4 3.5 8 7.8 8 2 0 3.8-.8 5.2-2"], requires: ["energyImport"], maxValue: 10, unit: "€", background: "#4d4213", highlight: "#ffd23f",
         title: "Electricity cost today",
-        detail: "Grid import cost minus export compensation since midnight, from Home Assistant cost statistics or the configured rates. Half scale: typical day of the last 30 days and the same season last year.",
+        detail: "Grid import cost minus export compensation since midnight, from Home Assistant cost statistics or the configured rates. Midpoint benchmark: typical day of the last 30 days and the same season last year.",
         source: "Grid prices in the Home Assistant Energy dashboard, or ENERGY_IMPORT × ELECTRICITY_PRICE − ENERGY_EXPORT × ELECTRICITY_COMPENSATION",
     },
     temperature: {
@@ -105,7 +104,6 @@ export const DEFAULT_BARS: GaugeName[] = ["gas_cost", "solar", "temperature", "b
 
 export const isGauge = (name: string): name is GaugeName => name in GAUGES;
 
-/** Explicit values are kept; an unset position uses its default when configured, otherwise the first configured option not already shown. */
 export function pickGauges(explicit: (string | undefined)[], defaults: GaugeName[], entities: Entities): GaugeName[] {
     const names = explicit.map((name) => name?.trim().toLowerCase() ?? "");
     const configured = (gauge: GaugeName) => GAUGES[gauge].requires.every((key) => entities[key].length);
