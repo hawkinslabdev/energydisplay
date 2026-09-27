@@ -1,6 +1,6 @@
 services:
   energydisplay:
-    image: ghcr.io/hawkinslabdev/ha_energydisplay:latest
+    image: ghcr.io/hawkinslabdev/energydisplay:latest
     build: .
     env_file: .env
     ports:

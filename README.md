@@ -2,12 +2,12 @@
   <img src="docs/icon.svg" alt="Logo" width="120" height="120">
 </p>
 
-<h1 align="center">Local Energy Display</h1>
+<h1 align="center">Energy Display</h1>
 
 <p align="center">
-  <a href="https://github.com/hawkinslabdev/ha_energydisplay/actions/workflows/tests.yml"><img src="https://img.shields.io/github/actions/workflow/status/hawkinslabdev/ha_energydisplay/tests.yml?branch=main&label=tests" alt="Tests"></a>
-  <a href="https://github.com/hawkinslabdev/ha_energydisplay/actions/workflows/docker.yml"><img src="https://img.shields.io/github/actions/workflow/status/hawkinslabdev/ha_energydisplay/docker.yml?branch=main&label=docker" alt="Docker"></a>
-  <a href="https://github.com/hawkinslabdev/ha_energydisplay/pkgs/container/ha_energydisplay"><img src="https://img.shields.io/badge/ghcr.io-amd64%20%7C%20arm64-2496ED?logo=docker&logoColor=white" alt="Container"></a>
+  <a href="https://github.com/hawkinslabdev/energydisplay/actions/workflows/tests.yml"><img src="https://img.shields.io/github/actions/workflow/status/hawkinslabdev/energydisplay/tests.yml?branch=main&label=tests" alt="Tests"></a>
+  <a href="https://github.com/hawkinslabdev/energydisplay/actions/workflows/docker.yml"><img src="https://img.shields.io/github/actions/workflow/status/hawkinslabdev/energydisplay/docker.yml?branch=main&label=docker" alt="Docker"></a>
+  <a href="https://github.com/hawkinslabdev/energydisplay/pkgs/container/energydisplay"><img src="https://img.shields.io/badge/ghcr.io-amd64%20%7C%20arm64-2496ED?logo=docker&logoColor=white" alt="Container"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-EUPL--1.2-blue.svg" alt="License"></a>
 </p>
 
@@ -31,7 +31,7 @@ That's all you need to get started.
 Run the interactive setup script to generate `.env` and `docker-compose.yml`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/hawkinslabdev/ha_energydisplay/HEAD/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/hawkinslabdev/energydisplay/HEAD/install.sh | sh
 ```
 
 Start the application:
@@ -169,8 +169,8 @@ Used for gas and electricity cost with both adapters. With Home Assistant, cost 
 | `solar` | Solar production today (kWh) | `SOLAR` |
 | `self_consumption` | Self-consumed solar energy today (%), as in the Energy dashboard gauge. Battery flows require autodiscovery. | `SOLAR`, `ENERGY_EXPORT` |
 | `self_sufficiency` | Self-sufficiency today (%), as in the Energy dashboard gauge. Battery flows require autodiscovery. | `ENERGY_IMPORT`, `SOLAR` |
-| `gas_cost` | Gas cost today (€), from Home Assistant cost statistics or `GAS` × `GAS_PRICE` | `GAS` |
-| `electricity_cost` | Grid import cost minus export compensation today (€), from Home Assistant cost statistics or `ENERGY_IMPORT` × `ELECTRICITY_PRICE` − `ENERGY_EXPORT` × `ELECTRICITY_COMPENSATION` | `ENERGY_IMPORT` |
+| `gas_cost` | Gas cost today (€): cost statistics, otherwise gas × `GAS_PRICE` | `GAS` |
+| `electricity_cost` | Electricity cost today (€): cost statistics, otherwise import × `ELECTRICITY_PRICE` − export × `ELECTRICITY_COMPENSATION` | `ENERGY_IMPORT` |
 | `temperature` | Current temperature (°C) | `TEMPERATURE` |
 | `battery` | Battery state of charge (%) | `BATTERY` |
 

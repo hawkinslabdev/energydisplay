@@ -1,9 +1,9 @@
 #!/bin/sh
 # Downloads docker-compose.yml and .env into the current directory.
-# Usage: curl -fsSL https://raw.githubusercontent.com/hawkinslabdev/ha_energydisplay/HEAD/install.sh | sh
+# Usage: curl -fsSL https://raw.githubusercontent.com/hawkinslabdev/energydisplay/HEAD/install.sh | sh
 set -e
 
-BASE=https://raw.githubusercontent.com/hawkinslabdev/ha_energydisplay/HEAD/energydisplay
+BASE=https://raw.githubusercontent.com/hawkinslabdev/energydisplay/HEAD/energydisplay
 
 fetch() {
   if [ -e "$2" ]; then
