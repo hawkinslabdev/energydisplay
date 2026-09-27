@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 
 import type { Entities, Reading } from "./api/state/summarize";
 import ComparisonGauge from "./components/gauges/ComparisonGauge";
@@ -10,6 +10,7 @@ import Tooltip from "./components/shared/Tooltip";
 import { DEFAULT_WHEELS, WHEELS, type WheelName } from "./wheels";
 
 const POLL_MS = 5000;
+const CACHE_KEY = "reading";
 
 type State = Reading & { wheels: WheelName[]; entities: Entities; unavailable: string[] };
 
@@ -35,6 +36,16 @@ export default function Home() {
   const [reading, setReading] = useState<Partial<State>>({});
   const [error, setError] = useState("");
 
+  // Last reading from a previous page load, shown until the first poll answers. Layout effect so it lands before paint.
+  useLayoutEffect(() => {
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      // A lazy useState initializer would mismatch the prerendered HTML.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (cached) setReading(JSON.parse(cached));
+    } catch {}
+  }, []);
+
   useEffect(() => {
     const poll = async () => {
       try {
@@ -43,6 +54,9 @@ export default function Home() {
         if (!response.ok) throw new Error(body.error);
         setReading(body);
         setError("");
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify(body));
+        } catch {}
       } catch (err) {
         setError(String(err));
       }
