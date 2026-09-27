@@ -1,1 +1,0 @@
-SMART_METER_ID = 1

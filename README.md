@@ -1,102 +1,45 @@
-<h1 align="center">
-  ⚡ P1 Energy Dashboard
-</h1>
+<h1 align="center">Energy Display for Home Assistant</h1>
 
 <p align="center">
-    <i align="center">Self-hosted P1 meter energy dashboard for the HomeWizard 🚀</i>
+  <a href="https://github.com/hawkinslabdev/ha_energydisplay/actions/workflows/docker.yml"><img src="https://img.shields.io/github/actions/workflow/status/hawkinslabdev/ha_energydisplay/docker.yml?branch=main&label=docker" alt="Docker"></a>
+  <a href="https://github.com/hawkinslabdev/ha_energydisplay/pkgs/container/ha_energydisplay"><img src="https://img.shields.io/badge/ghcr.io-amd64%20%7C%20arm64-2496ED?logo=docker&logoColor=white" alt="Container"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-EUPL--1.2-blue.svg" alt="License"></a>
 </p>
 
-<p align="center">
-    <img src="https://img.shields.io/badge/status-in_development-red" />
-</p>
+A self-hosted wall display for live power and daily energy, gas and water usage. Values come from Home Assistant entities, configured through environment variables.
 
-![alt text](/docs/hero.png)
+![Energy Display](/docs/hero.png)
 
-## Getting Started
+## Run
 
-To get started, simply follow these steps:
-
-1. Clone this repository to your local machine:
+1. Create a long-lived access token in Home Assistant (**Profile** > **Security**).
+2. Copy `.env.example` to `.env` and set the Home Assistant URL, token and entity IDs.
+3. Start the container:
 
    ```bash
-   git clone https://github.com/ryhazerus/EnergyDashboardWebDisplay
-   cd EnergyDashboardWebDisplay
+   docker compose up -d
    ```
 
-2. Build and start the system using Docker Compose:
+4. Open http://localhost:8001.
 
-   ```bash
-   docker compose up --build -d
-   ```
+## Configuration
 
-   > If you are on an older version of Docker that does not include the Compose plugin, use the standalone command instead:
-   > ```bash
-   > docker-compose up --build -d
-   > ```
+| Variable | Description |
+| --- | --- |
+| `HA_URL` | Home Assistant base URL, e.g. `http://homeassistant.local:8123` |
+| `HA_TOKEN` | Long-lived access token |
+| `TZ` | Time zone that defines midnight for daily totals, e.g. `Europe/Amsterdam` |
+| `POWER` | Current power sensor (W) |
+| `ENERGY_IMPORT` | Total imported energy sensor (kWh) |
+| `ENERGY_EXPORT` | Total exported energy sensor (kWh) |
+| `GAS` | Total gas sensor (m³) |
+| `WATER` | Total water sensor (m³ or L; m³ is converted to L) |
+| `TEMPERATURE` | Temperature sensor (°C) |
+| `BATTERY` | Battery state of charge sensor (%) |
+| `GAS_PRICE` | Gas price per m³, used for today's gas cost |
 
-3. Access the application:
+An empty entity variable shows `0`. Daily usage is the current total minus the value at midnight, read from Home Assistant history.
 
-   - Frontend: [http://localhost:8001](http://localhost:8001)
-   - Backend: [http://localhost:8000](http://localhost:8000) (you shouldn't really need this one)
+## License
 
-The web-app will guide you through the setup process, including configuring the connection to your local P1 meter.
-
----
-
-## Introduction 📑
-
-> **NOTE:** Temperature, functionality is not included in current build
-
-`P1 Energy Dashboard` is a self-hosted webapp for displaying information of a P1 smart meter. The system is in development and only supports the `HomeWizard P1 Smart Meter`. The easiest way to get started with the project is to clone or download this repository and run the docker compose file, but before you start make sure you have the prerequisites installed on your deployment environment.
-
-The web-app is easy to use and provides a setup screen once deployed to be able to configure the connection to your local P1 meter.
-
-### Key Features
-
-- Local graphing of daily energy and gas usage.
-- Configurable tariffs for gas prices.
-- Simple setup process.
-
-## Prerequisites 🛠️
-
-Check that you have the following dependencies installed before running the system.
-
-- NodeJS v20+ & NPM
-- Python 3.12
-- Docker
-
-## Built with 🛠️
-
-This project uses the following technologies:
-
-- FastAPI & Python 3.12
-- NextJS & Typescript
-- Poetry
-- Docker
-
-### Roadmap 🗺️
-
-- [x] Nothing is currently working but everything is there
-- [x] Meters for Energy and Gas are included
-- [x] Local db for graphing daily usage is available
-- [x] Meter for water is included
-- [x] Configurable tariffs for gas prices
-- [ ] Configurable tariffs for energy prices
-- [ ] Configurable Meters for users
-- [ ] Export data is available for users
-
-## Authors 🤵👲
-
-Contributors names and contact info
-
-- [@Ryhazerus](http://github.com/ryhazerus)
-
-## License 📑
-
-This project is licensed under the MIT License - see the LICENSE.md file for details
-
-## Acknowledgements 🤝
-
-This project is inspired by the HomeWizard Energy Display hardware device.
-
-- [HomeWizard Energy Display](https://www.homewizard.com/)
+This project is licensed under EUPL 1.2.
