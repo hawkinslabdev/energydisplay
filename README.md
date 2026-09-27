@@ -32,18 +32,44 @@ A self-hosted wall display for live power and daily energy, gas and water usage.
 | `HA_URL` | Home Assistant base URL, e.g. `http://homeassistant.local:8123` |
 | `HA_TOKEN` | Long-lived access token |
 | `TZ` | Time zone that defines midnight for daily totals, e.g. `Europe/Amsterdam` |
-| `AUTODISCOVER` | `true` reads power, grid import/export, solar production, gas, water, battery state of charge and gas price from the Home Assistant Energy dashboard. Entity variables that are set override discovered ones. Discovery runs once per container start. |
+| `AUTODISCOVER` | `true` reads power, grid import/export, solar production, gas, water, battery state of charge and gas price from the Home Assistant Energy dashboard, and temperature from a `weather.*` entity (`weather.forecast_*` preferred). Entity variables that are set override discovered ones. Discovery runs once per container start. |
 | `POWER` | Current power sensor (W) |
 | `ENERGY_IMPORT` | Total imported energy sensor (kWh) |
 | `ENERGY_EXPORT` | Total exported energy sensor (kWh) |
 | `SOLAR` | Total or daily solar production sensor (kWh or Wh) |
 | `GAS` | Total gas sensor (m³) |
 | `WATER` | Total water sensor (m³ or L; m³ is converted to L) |
-| `TEMPERATURE` | Temperature sensor (°C) |
-| `BATTERY` | Battery state of charge sensor (%) |
+| `TEMPERATURE` | Temperature sensor (°C), or a `weather.*` entity (reads its `temperature` attribute) |
+| `BATTERY` | Battery state of charge sensor (%). The battery tile is hidden when no battery is configured. |
 | `GAS_PRICE` | Gas price per m³, used for today's gas cost |
+| `WHEEL1` | Large wheel. Default `power` |
+| `WHEEL2` | Top small wheel. Default `water` |
+| `WHEEL3` | Bottom small wheel. Default `gas` |
+| `FRAME_ANCESTORS` | Extra origins allowed to embed the display in an iframe, space- or comma-separated. `HA_URL`'s origin is always allowed. |
 
-Entity variables accept a comma-separated list; values are summed (e.g. `ENERGY_IMPORT=sensor.import_t1,sensor.import_t2`). An empty entity variable shows `0`. Daily usage is the current total minus the value at midnight, read from Home Assistant history. A total that drops below its midnight value is treated as reset, so sensors that reset daily also work.
+Wheel values:
+
+| Value | Shows | Requires |
+| --- | --- | --- |
+| `power` | Current power (W) | `POWER` |
+| `water` | Water usage today (L) | `WATER` |
+| `gas` | Gas usage today (m³) | `GAS` |
+| `grid` | Net grid today: import minus export (kWh) | `ENERGY_IMPORT`, `ENERGY_EXPORT` |
+| `solar` | Solar production today (kWh) | `SOLAR` |
+| `self_consumption` | Solar production not exported, as a share of production today (%) | `SOLAR`, `ENERGY_EXPORT` |
+
+An unset or unknown value uses the wheel's default. A default whose entities are not configured is replaced by the first configured option not already shown.
+
+Entity variables accept a comma-separated list; values are summed (e.g. `ENERGY_IMPORT=sensor.import_t1,sensor.import_t2`). A dash (`–`) marks a value that is not configured or unavailable in Home Assistant. Daily usage is the current total minus the value at midnight, read from Home Assistant history. A total that drops below its midnight value is treated as reset, so sensors that reset daily also work.
+
+## Troubleshooting
+
+`/api/state` returns the readings plus:
+
+- `entities`: entity IDs in use per value, from environment variables or autodiscovery.
+- `unavailable`: entity IDs without a numeric state in Home Assistant.
+
+A value shown as `–` has no entity in `entities`, or its entity is listed in `unavailable`. Home Assistant errors (unreachable host, rejected token, timeouts) return HTTP 502 with a generic message; the cause is in the container log (`docker compose logs energydisplay`).
 
 ## License
 

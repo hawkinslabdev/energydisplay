@@ -2,16 +2,37 @@
 
 import { useEffect, useState } from "react";
 
-import type { Reading } from "./api/state/summarize";
+import type { Entities, Reading } from "./api/state/summarize";
 import ComparisonGauge from "./components/gauges/ComparisonGauge";
 import MeterGauge from "./components/gauges/MeterGauge";
 import RadialGauge from "./components/gauges/RadialGauge";
-import { formatRounding } from "./core/utils/formatting";
+import Tooltip from "./components/shared/Tooltip";
+import { DEFAULT_WHEELS, WHEELS, type WheelName } from "./wheels";
 
 const POLL_MS = 5000;
 
+type State = Reading & { wheels: WheelName[]; entities: Entities; unavailable: string[] };
+
+function Wheel({ name, reading, size, above }: { name: WheelName; reading: Partial<State>; size: number; above?: boolean }) {
+  const wheel = WHEELS[name];
+  return (
+    <Tooltip above={above} title={wheel.title} detail={wheel.detail} source={wheel.source}>
+      <RadialGauge
+        size={size}
+        value={reading[wheel.field] ?? null}
+        maxValue={wheel.maxValue}
+        unit={wheel.unit}
+        icon={wheel.icon}
+        gaugeBackground={wheel.background}
+        gaugeHighlight={wheel.highlight}
+        fontColor="#eaeaea"
+      />
+    </Tooltip>
+  );
+}
+
 export default function Home() {
-  const [reading, setReading] = useState<Partial<Reading>>({});
+  const [reading, setReading] = useState<Partial<State>>({});
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -31,105 +52,75 @@ export default function Home() {
     return () => clearInterval(timer);
   }, []);
 
+  const wheels = reading.wheels ?? DEFAULT_WHEELS;
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="grid grid-rows-4 grid-flow-col gap-4">
-        <div className="row-span-4 mx-4 my-12">
-          <RadialGauge
-            radius={150}
-            value={reading.power_w ?? 0}
-            maxValue={5000}
-            unit="w"
-            gaugeBackground="#2c134d"
-            gaugeHighlight="#8d37ff"
-            fontColor="#eaeaea"
-          />
-          <ComparisonGauge
-            valueIn={reading.energy_export_today ?? 0}
-            valueOut={reading.energy_import_today ?? 0}
-            unit="kWh"
-          />
+    <main className="grid h-dvh place-items-center overflow-hidden tabular-nums">
+      <div className="relative z-10 grid h-[50rem] w-[90rem] grid-cols-[auto_auto_auto] items-center justify-evenly">
+        <div className="flex flex-col items-center gap-6">
+          <Wheel name={wheels[0]} reading={reading} size={28} />
+          <Tooltip above title="Grid today" detail="Total energy imported and exported since midnight." source="ENERGY_EXPORT ↑  ENERGY_IMPORT ↓">
+            <ComparisonGauge
+              valueIn={reading.energy_export_today ?? null}
+              valueOut={reading.energy_import_today ?? null}
+              unit="kWh"
+            />
+          </Tooltip>
         </div>
-        <div className="row-span-2 col-span-2">
-          <RadialGauge
-            radius={90}
-            value={reading.water_today_l ?? 0}
-            maxValue={100}
-            unit="L"
-            gaugeBackground="#1b3b50"
-            gaugeHighlight="#3dbfff"
-            fontColor="#eaeaea"
-          />
+        <div className="flex flex-col items-center gap-8">
+          <Wheel name={wheels[1]} reading={reading} size={16} />
+          <Wheel name={wheels[2]} reading={reading} size={19} above />
         </div>
-        <div className="row-span-2 col-span-2">
-          <RadialGauge
-            radius={110}
-            value={reading.gas_today ?? 0}
-            maxValue={10}
-            unit="m3"
-            gaugeBackground="#501228"
-            gaugeHighlight="#fd2d86"
-            fontColor="#eaeaea"
-          />
-        </div>
-        <div className="mx-8 col-span-2">
-          <MeterGauge
-            icon="/icons/flame.svg"
-            value={formatRounding(reading.gas_cost_today ?? 0)}
-            minValue={0}
-            maxValue={100}
-            unit="€"
-            gaugeBackground="#595959"
-            gaugeHighlight="#ffffff"
-            fontColor=""
-            width={200}
-            height={20}
-          />
-        </div>
-        <div className="mx-8 col-span-2">
-          <MeterGauge
-            icon="/icons/sun.svg"
-            value={formatRounding(reading.solar_today ?? 0)}
-            minValue={0}
-            maxValue={35}
-            unit="kWh"
-            gaugeBackground="#314d2c"
-            gaugeHighlight="#5fda35"
-            fontColor=""
-            width={200}
-            height={20}
-          />
-        </div>
-        <div className="mx-8 col-span-2">
-          <MeterGauge
-            icon="/icons/thermometer.svg"
-            value={formatRounding(reading.temperature ?? 0)}
-            minValue={0}
-            maxValue={50}
-            unit="°C"
-            gaugeBackground="#59382b"
-            gaugeHighlight="#ff7600"
-            fontColor=""
-            width={200}
-            height={20}
-          />
-        </div>
-        <div className="mx-8 col-span-2">
-          <MeterGauge
-            icon="/icons/battery.svg"
-            value={formatRounding(reading.battery_soc ?? 0)}
-            minValue={0}
-            maxValue={100}
-            unit="%"
-            gaugeBackground="#1b4d3e"
-            gaugeHighlight="#2ee6a6"
-            fontColor=""
-            width={200}
-            height={20}
-          />
+        <div className="flex flex-col gap-9">
+          <Tooltip title="Gas cost today" detail="Estimated cost of today's gas usage at the configured rate." source="GAS × GAS_PRICE">
+            <MeterGauge
+              icon="/icons/flame.svg"
+              value={reading.gas_cost_today ?? null}
+              minValue={0}
+              maxValue={100}
+              unit="€"
+              gaugeBackground="#595959"
+              gaugeHighlight="#ffffff"
+            />
+          </Tooltip>
+          <Tooltip title="Solar today" detail="Total solar energy generated since midnight." source="SOLAR">
+            <MeterGauge
+              icon="/icons/sun.svg"
+              value={reading.solar_today ?? null}
+              minValue={0}
+              maxValue={35}
+              unit="kWh"
+              gaugeBackground="#314d2c"
+              gaugeHighlight="#5fda35"
+            />
+          </Tooltip>
+          <Tooltip above title="Temperature" detail="Current temperature from the configured sensor or weather integration." source="TEMPERATURE">
+            <MeterGauge
+              icon="/icons/thermometer.svg"
+              value={reading.temperature ?? null}
+              minValue={0}
+              maxValue={50}
+              unit="°C"
+              gaugeBackground="#59382b"
+              gaugeHighlight="#ff7600"
+            />
+          </Tooltip>
+          {!!reading.entities?.battery.length && (
+            <Tooltip above title="Battery" detail="Current battery state of charge." source="BATTERY">
+              <MeterGauge
+                icon="/icons/battery.svg"
+                value={reading.battery_soc ?? null}
+                minValue={0}
+                maxValue={100}
+                unit="%"
+                gaugeBackground="#1b4d3e"
+                gaugeHighlight="#2ee6a6"
+              />
+            </Tooltip>
+          )}
         </div>
       </div>
-      {error && <p className="text-red-400 text-center">{error}</p>}
+      {error && <p className="fixed inset-x-0 bottom-4 z-10 text-center text-xl text-red-400">{error}</p>}
     </main>
   );
 }

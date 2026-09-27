@@ -1,94 +1,86 @@
 import { formatRounding } from "@/app/core/utils/formatting";
 
 interface RadialGaugeProps {
-    radius: number;
-    value: number;
+    /** Diameter in rem. */
+    size: number;
+    value: number | null;
     maxValue: number;
     unit: string;
+    /** Stroke paths on a 24x24 grid, shown above the value. */
+    icon?: string[];
     gaugeBackground: string;
     gaugeHighlight: string;
     fontColor: string;
 }
 
+// Drawn in a fixed 200x200 box and scaled by CSS, so the gauge is crisp at any size.
+const RADIUS = 100;
+const STROKE = RADIUS * 0.15;
+const INNER = RADIUS - STROKE / 2;
+const CIRCUMFERENCE = 2 * Math.PI * INNER;
+
 export default function RadialGauge(props: RadialGaugeProps) {
-
-    const calcStrokeWidth = (radius: number) => {
-        return radius * 0.15;
-    };
-
-    const calcInnerRadius = (radius: number, strokeWidth: number) => {
-        return radius - strokeWidth / 2;
-    };
-
-    const calcFontSize = (radius: number) => {
-        return radius / 2;
-    };
-
-    // Function to calculate stroke dash array based on value and maxValue
-    const calcDashArray = (value: number, maxValue: number, radius: number) => {
-        const circumference = 2 * Math.PI * calcInnerRadius(radius, calcStrokeWidth(radius));
-        const result = `${(value / maxValue) * circumference} ${circumference}`;
-
-        return String(result);
-    };
+    const fill = Math.min(Math.max(props.value ?? 0, 0) / props.maxValue, 1) * CIRCUMFERENCE;
 
     return (
-        <svg height={props.radius * 2} width={props.radius * 2}>
-            {/* Linear Gradiant for showing gauge fill  */}
-            <defs>
-                <linearGradient x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor={props.gaugeHighlight}></stop>
-                    <stop offset="100%" stopColor={props.gaugeHighlight}></stop>
-                </linearGradient>
-            </defs>
-
-            {/* <!-- Radial Gauge Base --> */}
+        <svg
+            viewBox={`0 0 ${RADIUS * 2} ${RADIUS * 2}`}
+            style={{ width: `${props.size}rem`, height: `${props.size}rem` }}
+        >
             <circle
-                className="gauge-base"
-                cx={props.radius}
-                cy={props.radius}
+                cx={RADIUS}
+                cy={RADIUS}
                 fill="transparent"
-                r={calcInnerRadius(props.radius, calcStrokeWidth(props.radius))}
+                r={INNER}
                 stroke={props.gaugeBackground}
-                strokeWidth={calcStrokeWidth(props.radius)}></circle>
-
-            {/* <!-- Gauge Fill --> */}
-            <circle
-                className="gauge-fill"
-                cx={props.radius}
-                cy={props.radius}
-                fill="transparent"
-                r={calcInnerRadius(props.radius, calcStrokeWidth(props.radius))}
-                stroke={props.gaugeHighlight}
-                strokeWidth={calcStrokeWidth(props.radius)}
-                strokeDasharray={calcDashArray(props.value, props.maxValue, props.radius)}
-                strokeLinecap="round"
-                style={{
-                    transition: "0.3s",
-                }}
-            >
-            </circle>
-            {/* <!-- Value notation --> */}
+                strokeWidth={STROKE}
+            />
+            {props.value !== null && (
+                <circle
+                    cx={RADIUS}
+                    cy={RADIUS}
+                    fill="transparent"
+                    r={INNER}
+                    stroke={props.gaugeHighlight}
+                    strokeWidth={STROKE}
+                    strokeDasharray={`${fill} ${CIRCUMFERENCE}`}
+                    strokeLinecap="round"
+                    style={{ transition: "0.3s" }}
+                />
+            )}
+            {props.icon && (
+                <g
+                    transform={`translate(${RADIUS - 20} 24) scale(${40 / 24})`}
+                    fill="none"
+                    stroke={props.gaugeHighlight}
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                >
+                    {props.icon.map((d) => <path key={d} d={d} />)}
+                </g>
+            )}
             <text
                 x="50%"
                 y="50%"
                 textAnchor="middle"
-                fill={props.fontColor}
-                fontSize={calcFontSize(props.radius)}
+                fill={props.value === null ? "#6b7280" : props.fontColor}
+                fontSize={RADIUS / 2}
                 fontWeight="bold"
                 dy=".3em"
-            >{formatRounding(props.value) ?? 0}
+            >
+                {props.value === null ? "–" : props.unit === "%" ? Math.round(props.value) : formatRounding(props.value)}
             </text>
-            {/* <!-- Unit notation --> */}
             <text
                 x="50%"
                 y="70%"
                 textAnchor="middle"
                 fill={props.gaugeHighlight}
-                fontSize={calcFontSize(props.radius) / 1.5}
+                fontSize={RADIUS / 3}
                 fontWeight="medium"
                 dy=".3em"
-            >{props.unit}
+            >
+                {props.unit}
             </text>
         </svg>
     )

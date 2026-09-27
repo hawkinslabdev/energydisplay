@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <mask id="gap">
+    <rect width="256" height="256" fill="#fff"/>
+    <circle cx="178" cy="178" r="84"/>
+  </mask>
+  <path d="M8 124 128 8l120 116h-34v124H42V124z" fill="#03A9F4" mask="url(#gap)"/>
+  <circle cx="178" cy="178" r="72" fill="#8B5CF6"/>
+  <path d="M190 124 150 186h28l-10 46 42-64h-28z" fill="#FACC15"/>
+</svg>

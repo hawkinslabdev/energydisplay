@@ -1,21 +1,24 @@
 import { formatRounding } from "@/app/core/utils/formatting"
 
 interface ComparisonGaugeProps {
-    valueIn: number
-    valueOut: number
+    valueIn: number | null
+    valueOut: number | null
     unit: string
 }
 
+const show = (value: number | null) =>
+    value === null ? <span className="text-gray-500">–</span> : formatRounding(value)
+
 export default function ComparisonGauge(props: ComparisonGaugeProps) {
     return (
-        <div className="flex flex-col items-center m-4">
-            <div className="flex flex-row items-center">
-                <img src="/icons/arrow-up.svg" alt="Exported" width={40} height={40} />
-                <h3 className="ml-2 text-4xl font-semibold">{formatRounding(props.valueIn)}</h3>
-                <img src="/icons/arrow-down.svg" alt="Imported" width={40} height={40} />
-                <h3 className="ml-2 text-4xl font-semibold">{formatRounding(props.valueOut)}</h3>
+        <div className="flex flex-col items-center gap-2">
+            <div className="flex items-center gap-2 text-4xl font-semibold">
+                <img className="size-10" src="/icons/arrow-up.svg" alt="Exported" />
+                <span className="mr-4">{show(props.valueIn)}</span>
+                <img className="size-10" src="/icons/arrow-down.svg" alt="Imported" />
+                <span>{show(props.valueOut)}</span>
             </div>
-            <span className="mt-2 text-xl font-semibold text-gray-500">{props.unit}</span>
+            <span className="text-xl font-semibold text-gray-400">{props.unit}</span>
         </div>
     )
 }

@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start -p 9123",
     "lint": "eslint .",
-    "test": "node --test src/**/*.test.ts"
+    "test": "node --test 'src/**/*.test.ts'"
   },
   "dependencies": {
     "next": "^16.3.6",

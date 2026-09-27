@@ -1,31 +1,22 @@
 @import "tailwindcss";
 
-:root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
+/*
+ * The dashboard is one fixed composition of 90rem x 50rem. Tying the root font size to the
+ * viewport scales that composition to fill any landscape screen, from a 1024x768 tablet to a
+ * 4K TV, without breakpoints. Everything inside is sized in rem.
+ */
+html {
+  font-size: min(100vw / 90, 100vh / 50);
+  color-scheme: dark;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-  }
-}
-
+/* A wall display lives in a room at night too: dark regardless of the device's theme. */
 body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  color: #fff;
+  background: radial-gradient(ellipse at 50% 0%, #1c0b33, #000 70%) #000;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+::selection {
+  background: #8d37ff;
+  color: #fff;
 }

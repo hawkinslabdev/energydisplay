@@ -6,3 +6,10 @@ services:
     ports:
       - "9123:9123"
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
