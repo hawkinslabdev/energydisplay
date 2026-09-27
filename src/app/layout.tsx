@@ -7,8 +7,8 @@ import theme from "./core/utils/theme";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "P1 Energy Dashboard",
-  description: "A self-hosted energy dashboard of Smart P1 Meters",
+  title: "Energy Dashboard",
+  description: "A self-hosted implementation of the HomeWizard Energy Display.",
 };
 
 export default function RootLayout({

@@ -53,7 +53,7 @@ Autodiscovery is on by default (`AUTODISCOVER=false` disables it) and reads enti
 
 | Value | Source |
 | --- | --- |
-| Grid import and export, solar, gas, water, battery state of charge, gas price | Energy dashboard |
+| Grid import and export, solar, gas, water, battery state of charge, battery energy in and out, gas price | Energy dashboard |
 | Power | Energy dashboard grid power; otherwise the power sensor on the grid import meter's device |
 | Temperature | `weather.forecast_*` entity, otherwise the first `weather.*` entity |
 
@@ -75,17 +75,19 @@ Entity variables that are set override discovered values. Changes to the Energy 
 | `GAS` | Total gas sensor (m³) |
 | `WATER` | Total water sensor (m³ or L; m³ is converted to L) |
 | `TEMPERATURE` | Temperature sensor (°C), or a `weather.*` entity (reads its `temperature` attribute) |
-| `BATTERY` | Battery state of charge sensor (%). The battery tile is hidden when no battery is configured. |
+| `BATTERY` | Battery state of charge sensor (%). |
 | `GAS_PRICE` | Gas price per m³, used for today's gas cost |
 
 Entity variables accept a comma-separated list; values are summed (e.g. `ENERGY_IMPORT=sensor.import_t1,sensor.import_t2`). Values that are not valid entity IDs are ignored and logged.
 
-Daily usage is the current total minus the value at midnight, read from Home Assistant history. A total below its midnight value is treated as reset, so sensors that reset daily also work.
+Daily totals are the sum of hourly `change` values from Home Assistant long-term statistics since midnight, matching the Energy dashboard. Totals cover completed hours only and update on the hour. Configured sensors require a `state_class` (`total` or `total_increasing`) to have statistics.
+
+Gauge scales come from daily statistics of the last 30 days and the same date last year ±15 days. Daily totals use twice the median day, so a half-filled gauge is a typical day. Power uses the highest value reached. Without statistics, fixed defaults apply.
 
 </details>
 
 <details>
-<summary>Wheels</summary>
+<summary>Wheels and bars</summary>
 
 <br>
 
@@ -94,17 +96,25 @@ Daily usage is the current total minus the value at midnight, read from Home Ass
 | `WHEEL1` | Large wheel | `power` |
 | `WHEEL2` | Top small wheel | `water` |
 | `WHEEL3` | Bottom small wheel | `gas` |
+| `BAR1` | First bar | `gas_cost` |
+| `BAR2` | Second bar | `solar` |
+| `BAR3` | Third bar | `temperature` |
+| `BAR4` | Fourth bar | `battery` |
 
 | Value | Shows | Requires |
 | --- | --- | --- |
 | `power` | Current power (W) | `POWER` |
 | `water` | Water usage today (L) | `WATER` |
 | `gas` | Gas usage today (m³) | `GAS` |
-| `grid` | Net grid today: import minus export (kWh) | `ENERGY_IMPORT`, `ENERGY_EXPORT` |
+| `grid` | Grid neutrality: net imported from (positive) or exported to (negative) the grid today (kWh) | `ENERGY_IMPORT`, `ENERGY_EXPORT` |
 | `solar` | Solar production today (kWh) | `SOLAR` |
-| `self_consumption` | Solar production not exported, as a share of production today (%) | `SOLAR`, `ENERGY_EXPORT` |
+| `self_consumption` | Self-consumed solar energy today (%), as in the Energy dashboard gauge. Battery flows require autodiscovery. | `SOLAR`, `ENERGY_EXPORT` |
+| `self_sufficiency` | Self-sufficiency today (%), as in the Energy dashboard gauge. Battery flows require autodiscovery. | `ENERGY_IMPORT`, `SOLAR` |
+| `gas_cost` | Gas cost today (€) | `GAS`, gas price |
+| `temperature` | Current temperature (°C) | `TEMPERATURE` |
+| `battery` | Battery state of charge (%) | `BATTERY` |
 
-An unset or unknown value uses the position's default. A default whose entities are not configured is replaced by the first configured option not already shown.
+Every value works in every position. An unset or unknown value uses the position's default. A default whose entities are not configured is replaced by the first configured option not already shown. A bar whose entities are not configured is hidden.
 
 </details>
 

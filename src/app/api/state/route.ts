@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 
-import { pickWheels } from "../../wheels";
+import { DEFAULT_BARS, DEFAULT_WHEELS, pickGauges } from "../../gauges";
 import {
   ENTITY_ID,
   type Entities,
   type HaState,
   type RegistryEntry,
+  type Statistics,
   fromPrefs,
   num,
   pickDevicePower,
@@ -33,6 +34,8 @@ const configured: Entities = {
   water: list(env.WATER),
   temperature: list(env.TEMPERATURE),
   battery: list(env.BATTERY),
+  batteryIn: [],
+  batteryOut: [],
 };
 
 // A missing entity (404) resolves to undefined, so one removed sensor shows as unavailable.
@@ -52,11 +55,11 @@ async function ha<T>(path: string, optional = false): Promise<T | undefined> {
 }
 
 // Runs websocket commands in one authenticated session; results come back in command order.
-function haCommands(types: string[]): Promise<unknown[]> {
+function haCommands(commands: ({ type: string } & Record<string, unknown>)[]): Promise<unknown[]> {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(`${env.HA_URL?.replace(/^http/, "ws")}/api/websocket`);
     const results: unknown[] = [];
-    let pending = types.length;
+    let pending = commands.length;
     const done = (settle: () => void) => {
       clearTimeout(timer);
       ws.close();
@@ -72,12 +75,12 @@ function haCommands(types: string[]): Promise<unknown[]> {
       if (message.type === "auth_required") {
         ws.send(JSON.stringify({ type: "auth", access_token: env.HA_TOKEN }));
       } else if (message.type === "auth_ok") {
-        types.forEach((type, i) => ws.send(JSON.stringify({ id: i + 1, type })));
+        commands.forEach((command, i) => ws.send(JSON.stringify({ ...command, id: i + 1 })));
       } else if (message.type === "auth_invalid") {
         done(() => reject(new Error("Home Assistant rejected HA_TOKEN")));
       } else if (message.type === "result") {
         if (!message.success) {
-          done(() => reject(new Error(`${types[message.id - 1]}: ${message.error?.message}`)));
+          done(() => reject(new Error(`${commands[message.id - 1].type}: ${message.error?.message}`)));
           return;
         }
         results[message.id - 1] = message.result;
@@ -89,7 +92,7 @@ function haCommands(types: string[]): Promise<unknown[]> {
 
 async function discover() {
   const [[prefs, registry], states] = await Promise.all([
-    haCommands(["energy/get_prefs", "config/entity_registry/list"]),
+    haCommands([{ type: "energy/get_prefs" }, { type: "config/entity_registry/list" }]),
     ha<HaState[]>("states"),
   ]);
   const found = fromPrefs(prefs as Parameters<typeof fromPrefs>[0]);
@@ -131,10 +134,48 @@ async function resolveEntities(): Promise<{ entities: Entities; gasPrice: number
   };
 }
 
+// daily statistics of the last 30 days and the same season last year
+let reference: { day: number; days: Promise<Statistics> } | undefined;
+function referenceDays(midnight: Date, ids: string[]) {
+  if (reference?.day !== midnight.getTime()) {
+    const shift = (from: Date, days: number) => new Date(new Date(from).setDate(from.getDate() + days)).toISOString();
+    const period = (start_time: string, end_time: string) => ({
+      type: "recorder/statistics_during_period",
+      start_time,
+      end_time,
+      statistic_ids: ids,
+      period: "day",
+      types: ["change", "max", "min"],
+    });
+    const days = haCommands([
+      period(shift(midnight, -30), midnight.toISOString()),
+      period(shift(midnight, -365 - 15), shift(midnight, -365 + 15)),
+    ]).then((results) => {
+      const merged: Statistics = {};
+      for (const result of results as Statistics[])
+        for (const [id, rows] of Object.entries(result)) merged[id] = [...(merged[id] ?? []), ...rows];
+      return merged;
+    });
+    reference = { day: midnight.getTime(), days };
+    days.catch(() => (reference = undefined));
+  }
+  return reference.days.catch(() => ({}));
+}
+
 const byId = (states: (HaState | undefined)[]) =>
   Object.fromEntries(
     states.filter((state): state is HaState => !!state).map((state) => [state.entity_id, state]),
   );
+
+// wheels and bars share one pick, so no option shows twice
+const layout = (entities: Entities) => {
+  const gauges = pickGauges(
+    [env.WHEEL1, env.WHEEL2, env.WHEEL3, env.BAR1, env.BAR2, env.BAR3, env.BAR4],
+    [...DEFAULT_WHEELS, ...DEFAULT_BARS],
+    entities,
+  );
+  return { wheels: gauges.slice(0, 3), bars: gauges.slice(3) };
+};
 
 async function read() {
   const { entities, gasPrice } = await resolveEntities();
@@ -145,25 +186,29 @@ async function read() {
     ...entities.solar,
     ...entities.gas,
     ...entities.water,
+    ...entities.batteryIn,
+    ...entities.batteryOut,
   ];
   const midnight = new Date();
   midnight.setHours(0, 0, 0, 0);
-  // Only the midnight baseline is used; a short window keeps the response from growing all day.
-  const until = new Date(midnight.getTime() + 1000).toISOString();
 
-  const [current, history] = await Promise.all([
+  const [current, [statistics], days] = await Promise.all([
     Promise.all(ids.map((id) => ha<HaState>(`states/${id}`, true))),
     totals.length
-      ? ha<HaState[][]>(
-          `history/period/${midnight.toISOString()}?end_time=${until}` +
-            `&filter_entity_id=${totals.join(",")}&minimal_response&no_attributes`,
-        )
-      : [],
+      ? haCommands([{
+          type: "recorder/statistics_during_period",
+          start_time: midnight.toISOString(),
+          statistic_ids: totals,
+          period: "hour",
+          types: ["change"],
+        }])
+      : [{}],
+    referenceDays(midnight, [...totals, ...entities.power]),
   ]);
   const states = byId(current);
   return {
-    ...summarize(entities, states, byId(history.map((states) => states[0])), gasPrice),
-    wheels: pickWheels([env.WHEEL1, env.WHEEL2, env.WHEEL3], entities),
+    ...summarize(entities, states, statistics as Statistics, gasPrice, days),
+    ...layout(entities),
     // Troubleshooting: the entity IDs in use (set or discovered), and those without a usable value.
     entities,
     unavailable: ids.filter((id) => num(states[id]) === undefined),

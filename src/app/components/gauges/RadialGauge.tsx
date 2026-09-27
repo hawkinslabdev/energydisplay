@@ -1,4 +1,5 @@
 import { formatRounding } from "@/app/core/utils/formatting";
+import { fraction, linecap } from "@/app/core/utils/gauge";
 
 interface RadialGaugeProps {
     /** Diameter in rem. */
@@ -20,7 +21,8 @@ const INNER = RADIUS - STROKE / 2;
 const CIRCUMFERENCE = 2 * Math.PI * INNER;
 
 export default function RadialGauge(props: RadialGaugeProps) {
-    const fill = Math.min(Math.max(props.value ?? 0, 0) / props.maxValue, 1) * CIRCUMFERENCE;
+    // negative values, e.g. grid export, fill counterclockwise
+    const fill = fraction(Math.abs(props.value ?? 0), props.maxValue) * CIRCUMFERENCE;
 
     return (
         <svg
@@ -44,7 +46,8 @@ export default function RadialGauge(props: RadialGaugeProps) {
                     stroke={props.gaugeHighlight}
                     strokeWidth={STROKE}
                     strokeDasharray={`${fill} ${CIRCUMFERENCE}`}
-                    strokeLinecap="round"
+                    strokeLinecap={linecap(fill, STROKE)}
+                    transform={props.value < 0 ? `matrix(1 0 0 -1 0 ${RADIUS * 2})` : undefined}
                     style={{ transition: "0.3s" }}
                 />
             )}

@@ -26,7 +26,7 @@ const csp = [
 ].join("; ");
 
 // Everything else gets a bare plain-text response, instead of a rendered page.
-const ICONS = ["arrow-down", "arrow-up", "battery", "flame", "sun", "thermometer"];
+const ICONS = ["arrow-down", "arrow-up"];
 const ROUTES = ["/", "/api/state", "/icon.svg", ...ICONS.map((icon) => `/icons/${icon}.svg`)];
 // Next answers misses under /_next/static/ in plain text itself; dev tooling needs the rest of /_next/.
 const PREFIXES = process.env.NODE_ENV === "production" ? ["/_next/static/"] : ["/_next/", "/__nextjs"];

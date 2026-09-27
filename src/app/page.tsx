@@ -7,26 +7,43 @@ import ComparisonGauge from "./components/gauges/ComparisonGauge";
 import MeterGauge from "./components/gauges/MeterGauge";
 import RadialGauge from "./components/gauges/RadialGauge";
 import Tooltip from "./components/shared/Tooltip";
-import { DEFAULT_WHEELS, WHEELS, type WheelName } from "./wheels";
+import { DEFAULT_BARS, DEFAULT_WHEELS, GAUGES, type GaugeName } from "./gauges";
 
 const POLL_MS = 5000;
 const CACHE_KEY = "reading";
 
-type State = Reading & { wheels: WheelName[]; entities: Entities; unavailable: string[] };
+type State = Reading & { wheels: GaugeName[]; bars: GaugeName[]; entities: Entities; unavailable: string[] };
 
-function Wheel({ name, reading, size, above }: { name: WheelName; reading: Partial<State>; size: number; above?: boolean }) {
-  const wheel = WHEELS[name];
+function Wheel({ name, reading, size, above }: { name: GaugeName; reading: Partial<State>; size: number; above?: boolean }) {
+  const wheel = GAUGES[name];
   return (
     <Tooltip above={above} title={wheel.title} detail={wheel.detail} source={wheel.source}>
       <RadialGauge
         size={size}
         value={reading[wheel.field] ?? null}
-        maxValue={wheel.maxValue}
+        maxValue={reading.ranges?.[wheel.field] ?? wheel.maxValue}
         unit={wheel.unit}
         icon={wheel.icon}
         gaugeBackground={wheel.background}
         gaugeHighlight={wheel.highlight}
         fontColor="#eaeaea"
+      />
+    </Tooltip>
+  );
+}
+
+function Bar({ name, reading, above }: { name: GaugeName; reading: Partial<State>; above?: boolean }) {
+  const bar = GAUGES[name];
+  return (
+    <Tooltip above={above} title={bar.title} detail={bar.detail} source={bar.source}>
+      <MeterGauge
+        icon={bar.icon}
+        value={reading[bar.field] ?? null}
+        minValue={0}
+        maxValue={reading.ranges?.[bar.field] ?? bar.maxValue}
+        unit={bar.unit}
+        gaugeBackground={bar.background}
+        gaugeHighlight={bar.highlight}
       />
     </Tooltip>
   );
@@ -66,6 +83,9 @@ export default function Home() {
   }, []);
 
   const wheels = reading.wheels ?? DEFAULT_WHEELS;
+  // a bar without its entities is hidden, e.g. no battery
+  const bars = (reading.bars ?? DEFAULT_BARS).filter((name) =>
+    !reading.entities || GAUGES[name].requires.every((key) => reading.entities![key].length));
 
   return (
     <main className="grid h-dvh place-items-center overflow-hidden tabular-nums">
@@ -85,52 +105,7 @@ export default function Home() {
           <Wheel name={wheels[2]} reading={reading} size={19} above />
         </div>
         <div className="flex flex-col gap-9">
-          <Tooltip title="Gas cost today" detail="Estimated cost of today's gas usage at the configured rate." source="GAS × GAS_PRICE">
-            <MeterGauge
-              icon="/icons/flame.svg"
-              value={reading.gas_cost_today ?? null}
-              minValue={0}
-              maxValue={100}
-              unit="€"
-              gaugeBackground="#595959"
-              gaugeHighlight="#ffffff"
-            />
-          </Tooltip>
-          <Tooltip title="Solar today" detail="Total solar energy generated since midnight." source="SOLAR">
-            <MeterGauge
-              icon="/icons/sun.svg"
-              value={reading.solar_today ?? null}
-              minValue={0}
-              maxValue={35}
-              unit="kWh"
-              gaugeBackground="#314d2c"
-              gaugeHighlight="#5fda35"
-            />
-          </Tooltip>
-          <Tooltip above title="Temperature" detail="Current temperature from the configured sensor or weather integration." source="TEMPERATURE">
-            <MeterGauge
-              icon="/icons/thermometer.svg"
-              value={reading.temperature ?? null}
-              minValue={0}
-              maxValue={50}
-              unit="°C"
-              gaugeBackground="#59382b"
-              gaugeHighlight="#ff7600"
-            />
-          </Tooltip>
-          {!!reading.entities?.battery.length && (
-            <Tooltip above title="Battery" detail="Current battery state of charge." source="BATTERY">
-              <MeterGauge
-                icon="/icons/battery.svg"
-                value={reading.battery_soc ?? null}
-                minValue={0}
-                maxValue={100}
-                unit="%"
-                gaugeBackground="#1b4d3e"
-                gaugeHighlight="#2ee6a6"
-              />
-            </Tooltip>
-          )}
+          {bars.map((name, i) => <Bar key={i} name={name} reading={reading} above={i >= 2} />)}
         </div>
       </div>
       {error && <p className="fixed inset-x-0 bottom-4 z-10 text-center text-xl text-red-400">{error}</p>}

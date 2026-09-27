@@ -1,3 +1,5 @@
+import { type Flows, peak, selfSufficiencyPct, solarConsumedPct, typical } from "./metrics.ts";
+
 export interface HaState {
   entity_id: string;
   state: string;
@@ -13,6 +15,8 @@ export interface Entities {
   water: string[];
   temperature: string[];
   battery: string[];
+  batteryIn: string[];
+  batteryOut: string[];
 }
 
 // null means not configured, or no usable state in Home Assistant.
@@ -26,9 +30,17 @@ export interface Reading {
   temperature: number | null;
   battery_soc: number | null;
   gas_cost_today: number | null;
+  gas_price: number | null;
   grid_net_today: number | null;
   solar_self_consumed_pct: number | null;
+  self_sufficiency_pct: number | null;
+  // full scale per field from last 30 days and season last year
+  ranges: Partial<Record<keyof Reading, number>>;
 }
+
+// hourly change rows from recorder/statistics_during_period by statistic id
+type Row = { start: number; change?: number | null; max?: number | null; min?: number | null };
+export type Statistics = Record<string, Row[]>;
 
 interface EnergySource {
   type: string;
@@ -58,6 +70,8 @@ export function fromPrefs(prefs: { energy_sources: EnergySource[] }) {
       gas: pick("gas", "stat_energy_from"),
       water: pick("water", "stat_energy_from"),
       battery: pick("battery", "stat_soc"),
+      batteryIn: pick("battery", "stat_energy_to"),
+      batteryOut: pick("battery", "stat_energy_from"),
     },
     gasPrice: gas?.number_energy_price ?? undefined,
   };
@@ -81,28 +95,60 @@ const total = (values: (number | undefined)[]) =>
 export function summarize(
   entities: Entities,
   current: Record<string, HaState>,
-  midnight: Record<string, HaState>,
+  statistics: Statistics,
   gasPrice: number | null,
+  days: Statistics = {},
 ): Reading {
   const factor = (id: string) =>
     FACTOR[current[id]?.attributes?.unit_of_measurement ?? ""] ?? 1;
-  // A total below its midnight value was reset (e.g. a "today" sensor), so count from zero.
-  const today = (id: string) => {
-    const now = num(current[id]);
-    const then = num(midnight[id]);
-    if (now === undefined || then === undefined) return undefined;
-    return now >= then ? now - then : now;
-  };
+  const rows = (id: string) => statistics[id] ?? [];
+  // completed hours since midnight, like home assistant
+  const today = (id: string) =>
+    rows(id).length ? rows(id).reduce((sum, row) => sum + (row.change ?? 0), 0) : undefined;
   const scale = (id: string, value?: number) =>
     value === undefined ? undefined : value * factor(id);
   const sum = (ids: string[]) => total(ids.map((id) => scale(id, num(current[id]))));
   const scaledToday = (ids: string[]) => total(ids.map((id) => scale(id, today(id))));
   const first = (ids: string[]) => num(current[ids[0]]) ?? null;
+  // per period start, the sum over ids of a row value
+  const byStart = (source: Statistics, ids: string[], value: (id: string, row: Row) => number) => {
+    const sums = new Map<number, number>();
+    for (const id of ids) for (const row of source[id] ?? []) sums.set(row.start, (sums.get(row.start) ?? 0) + value(id, row));
+    return sums;
+  };
+  const change = (id: string, row: Row) => (row.change ?? 0) * factor(id);
 
   const gasToday = total(entities.gas.map(today));
   const imported = scaledToday(entities.energyImport);
   const exported = scaledToday(entities.energyExport);
   const solar = scaledToday(entities.solar);
+
+  const flows = {
+    from_grid: byStart(statistics, entities.energyImport, change),
+    to_grid: byStart(statistics, entities.energyExport, change),
+    solar: byStart(statistics, entities.solar, change),
+    from_battery: byStart(statistics, entities.batteryOut, change),
+    to_battery: byStart(statistics, entities.batteryIn, change),
+  };
+  const starts = [...new Set(Object.values(flows).flatMap((sums) => [...sums.keys()]))].sort((a, b) => a - b);
+  const hours: Flows[] = starts.map((start) => ({
+    from_grid: flows.from_grid.get(start) ?? 0,
+    to_grid: flows.to_grid.get(start) ?? 0,
+    solar: flows.solar.get(start) ?? 0,
+    from_battery: flows.from_battery.get(start) ?? 0,
+    to_battery: flows.to_battery.get(start) ?? 0,
+  }));
+
+  const gasScale = typical(byStart(days, entities.gas, (_, row) => row.change ?? 0).values());
+  const ranges: Reading["ranges"] = {
+    power_w: peak(byStart(days, entities.power, (id, row) => Math.max(Math.abs(row.max ?? 0), Math.abs(row.min ?? 0)) * factor(id)).values()),
+    solar_today: typical(byStart(days, entities.solar, change).values()),
+    gas_today: gasScale,
+    water_today_l: typical(byStart(days, entities.water, change).values()),
+    grid_net_today: typical(byStart(days, [...entities.energyImport, ...entities.energyExport], (id, row) =>
+      (entities.energyExport.includes(id) ? -1 : 1) * change(id, row)).values()),
+    gas_cost_today: gasScale && gasPrice ? gasScale * gasPrice : undefined,
+  };
 
   return {
     power_w: sum(entities.power),
@@ -114,10 +160,11 @@ export function summarize(
     temperature: first(entities.temperature),
     battery_soc: first(entities.battery),
     gas_cost_today: gasToday === null || gasPrice === null ? null : gasToday * gasPrice,
+    gas_price: gasPrice,
     grid_net_today: total([imported ?? undefined, exported === null ? undefined : -exported]),
-    // Share of today's solar production used at home (including charging the battery) instead of exported.
-    solar_self_consumed_pct:
-      solar && exported !== null ? Math.min(Math.max((solar - exported) / solar, 0), 1) * 100 : null,
+    solar_self_consumed_pct: solar === null || exported === null ? null : solarConsumedPct(hours),
+    self_sufficiency_pct: imported === null ? null : selfSufficiencyPct(hours),
+    ranges: Object.fromEntries(Object.entries(ranges).filter(([, value]) => value)),
   };
 }
 
