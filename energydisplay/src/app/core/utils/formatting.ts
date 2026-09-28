@@ -12,3 +12,12 @@ export const formatRounding = (value: number): number => {
     // Return the rounded value
     return roundedValue;
 }
+
+const IDLE_W = 20;
+
+// home assistant battery power is negative while charging
+export const powerNote = (watts: number | null | undefined) => {
+    if (watts == null || Math.abs(watts) < IDLE_W) return undefined;
+    const size = Math.round(Math.abs(watts));
+    return `${watts < 0 ? "↑" : "↓"} ${size < 1000 ? `${size} W` : `${(size / 1000).toFixed(1)} kW`}`;
+};

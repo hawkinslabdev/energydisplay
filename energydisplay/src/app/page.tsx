@@ -7,8 +7,9 @@ import ComparisonGauge from "./components/gauges/ComparisonGauge";
 import MeterGauge from "./components/gauges/MeterGauge";
 import RadialGauge from "./components/gauges/RadialGauge";
 import Tooltip from "./components/shared/Tooltip";
+import { powerNote } from "./core/utils/formatting";
 import { demoReading } from "./demo";
-import { DEFAULT_BARS, DEFAULT_WHEELS, GAUGES, type GaugeName } from "./gauges";
+import { DEFAULT_BARS, DEFAULT_WHEELS, GAUGES, type Gauge, type GaugeName } from "./gauges";
 
 const POLL_MS = 5000;
 const CACHE_KEY = "reading";
@@ -37,14 +38,17 @@ function Wheel({ name, reading, size, above }: { name: GaugeName; reading: Parti
 
 function Bar({ name, reading, above }: { name: GaugeName; reading: Partial<State>; above?: boolean }) {
   const bar = GAUGES[name];
+  const { note }: Gauge = bar;
+  const watts = note ? reading[note.field] : null;
   return (
-    <Tooltip above={above} title={bar.title} detail={bar.detail} source={bar.source}>
+    <Tooltip above={above} title={bar.title} detail={watts == null ? bar.detail : `${bar.detail} ${note!.detail}`} source={bar.source}>
       <MeterGauge
         icon={bar.icon}
         value={reading[bar.field] ?? null}
         minValue={0}
         maxValue={reading.ranges?.[bar.field] ?? bar.maxValue}
         unit={bar.unit}
+        note={powerNote(watts)}
         gaugeBackground={bar.background}
         gaugeHighlight={bar.highlight}
       />

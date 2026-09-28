@@ -11,10 +11,12 @@ export interface Entities {
   energyImport: string[];
   energyExport: string[];
   solar: string[];
+  solarPower: string[];
   gas: string[];
   water: string[];
   temperature: string[];
   battery: string[];
+  batteryPower: string[];
   batteryIn: string[];
   batteryOut: string[];
   gasCost: string[];
@@ -28,10 +30,12 @@ export interface Reading {
   energy_import_today: number | null;
   energy_export_today: number | null;
   solar_today: number | null;
+  solar_power_w: number | null;
   gas_today: number | null;
   water_today_l: number | null;
   temperature: number | null;
   battery_soc: number | null;
+  battery_power_w: number | null;
   gas_cost_today: number | null;
   gas_price: number | null;
   electricity_cost_today: number | null;
@@ -186,10 +190,12 @@ export function summarize(
     energy_import_today: imported,
     energy_export_today: exported,
     solar_today: solar,
+    solar_power_w: sum(entities.solarPower),
     gas_today: gasToday,
     water_today_l: scaledToday(entities.water),
     temperature: first(entities.temperature),
     battery_soc: first(entities.battery),
+    battery_power_w: sum(entities.batteryPower),
     gas_cost_today: gasCost,
     gas_price: gasPrice,
     electricity_cost_today: electricityCost,

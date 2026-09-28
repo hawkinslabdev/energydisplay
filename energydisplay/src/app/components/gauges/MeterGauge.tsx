@@ -7,6 +7,7 @@ interface MeterGaugeProps {
     minValue: number;
     maxValue: number;
     unit: string;
+    note?: string;
     gaugeBackground: string;
     gaugeHighlight: string;
 }
@@ -31,7 +32,7 @@ export default function MeterGauge(props: MeterGaugeProps) {
                 <span className={`text-6xl font-semibold ${props.value === null ? "text-gray-500" : ""}`}>{whole}</span>
                 <div className="flex flex-col gap-1 text-2xl font-semibold leading-none">
                     <span>{props.unit}</span>
-                    <span className="text-gray-400">{decimals}</span>
+                    <span className="text-gray-400">{props.note ?? decimals}</span>
                 </div>
             </div>
             <svg className="h-[1.8rem] w-72" viewBox="0 0 200 20">
@@ -42,7 +43,7 @@ export default function MeterGauge(props: MeterGaugeProps) {
                         y1="10"
                         x2={to}
                         y2="10"
-                        strokeLinecap={linecap(fill, BAR_WIDTH)}
+                        strokeLinecap={linecap(fill)}
                         strokeWidth={BAR_WIDTH}
                         stroke={props.gaugeHighlight}
                         strokeDasharray={`${fill} ${BAR_END}`}

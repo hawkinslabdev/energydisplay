@@ -1,7 +1,8 @@
 import type { Entities, Reading } from "./api/state/summarize";
 
-interface Gauge {
+export interface Gauge {
     field: keyof Reading;
+    note?: { field: "battery_power_w" | "solar_power_w"; detail: string };
     /** Stroke paths on a 24x24 grid. */
     icon: string[];
     /** Entities the gauge needs; missing entities cause the gauge to be skipped. */
@@ -49,9 +50,10 @@ export const GAUGES = {
     solar: {
         field: "solar_today",
         icon: ["M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0z", "M12 2v2", "M12 20v2", "M4.93 4.93l1.41 1.41", "M17.66 17.66l1.41 1.41", "M2 12h2", "M20 12h2", "M6.34 17.66l-1.41 1.41", "M19.07 4.93l-1.41 1.41"], requires: ["solar"], maxValue: 35, unit: "kWh", background: "#314d2c", highlight: "#5fda35",
+        note: { field: "solar_power_w", detail: "With current production." },
         title: "Solar today",
         detail: "Total solar energy generated since midnight. Midpoint benchmark: typical day of the last 30 days and the same season last year.",
-        source: "SOLAR",
+        source: "SOLAR, optional SOLAR_POWER",
     },
     self_consumption: {
         field: "solar_self_consumed_pct",
@@ -91,9 +93,10 @@ export const GAUGES = {
     battery: {
         field: "battery_soc",
         icon: ["M3 6h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z", "M23 13v-2"], requires: ["battery"], maxValue: 100, unit: "%", background: "#1b4d3e", highlight: "#2ee6a6",
+        note: { field: "battery_power_w", detail: "With charge (↑) or discharge (↓) power." },
         title: "Battery",
         detail: "Current battery state of charge.",
-        source: "BATTERY",
+        source: "BATTERY, optional BATTERY_POWER",
     },
 } satisfies Record<string, Gauge>;
 

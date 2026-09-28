@@ -93,10 +93,12 @@ Explicitly configure or override entities (supports comma-separated lists to sum
 | `ENERGY_IMPORT` | Total imported energy sensor (kWh or Wh) |
 | `ENERGY_EXPORT` | Total exported energy sensor (kWh or Wh) |
 | `SOLAR` | Total or daily solar production sensor (kWh or Wh) |
+| `SOLAR_POWER` | Opt-in solar power sensor (W or kW), shown under solar today. Not autodiscovered. |
 | `GAS` | Total gas sensor (m³) |
 | `WATER` | Total water sensor (m³ or L; m³ is converted to L) |
 | `TEMPERATURE` | Temperature sensor (°C), or a `weather.*` entity (reads its `temperature` attribute) |
 | `BATTERY` | Battery state of charge sensor (%). |
+| `BATTERY_POWER` | Opt-in battery power sensor (W or kW; negative while charging), shown under the state of charge. Not autodiscovered. |
 
 </details>
 
@@ -166,13 +168,13 @@ Used for gas and electricity cost with both adapters. With Home Assistant, cost 
 | `water` | Water usage today (L) | `WATER` |
 | `gas` | Gas usage today (m³) | `GAS` |
 | `grid` | Grid neutrality: net imported from (positive) or exported to (negative) the grid today (kWh) | `ENERGY_IMPORT`, `ENERGY_EXPORT` |
-| `solar` | Solar production today (kWh) | `SOLAR` |
+| `solar` | Solar production today (kWh), optionally with current production in place of the decimals | `SOLAR`, `SOLAR_POWER` optional |
 | `self_consumption` | Self-consumed solar energy today (%), as in the Energy dashboard gauge. Battery flows require autodiscovery. | `SOLAR`, `ENERGY_EXPORT` |
 | `self_sufficiency` | Self-sufficiency today (%), as in the Energy dashboard gauge. Battery flows require autodiscovery. | `ENERGY_IMPORT`, `SOLAR` |
 | `gas_cost` | Gas cost today (€): cost statistics, otherwise gas × `GAS_PRICE` | `GAS` |
 | `electricity_cost` | Electricity cost today (€): cost statistics, otherwise import × `ELECTRICITY_PRICE` − export × `ELECTRICITY_COMPENSATION` | `ENERGY_IMPORT` |
 | `temperature` | Current temperature (°C) | `TEMPERATURE` |
-| `battery` | Battery state of charge (%) | `BATTERY` |
+| `battery` | Battery state of charge (%), optionally with charge (↑) or discharge (↓) power in place of the decimals | `BATTERY`, `BATTERY_POWER` optional |
 
 Unconfigured metrics fall back to available options or hide automatically.
 

@@ -46,7 +46,7 @@ export default function RadialGauge(props: RadialGaugeProps) {
                     stroke={props.gaugeHighlight}
                     strokeWidth={STROKE}
                     strokeDasharray={`${fill} ${CIRCUMFERENCE}`}
-                    strokeLinecap={linecap(fill, STROKE)}
+                    strokeLinecap={linecap(fill)}
                     transform={props.value < 0 ? `matrix(1 0 0 -1 0 ${RADIUS * 2})` : undefined}
                     style={{ transition: "0.3s" }}
                 />

@@ -9,7 +9,7 @@ const s = (entity_id: string, state: string, unit?: string) => ({
   attributes: { unit_of_measurement: unit },
 });
 
-const none = { power: [], energyImport: [], energyExport: [], solar: [], gas: [], water: [], temperature: [], battery: [], batteryIn: [], batteryOut: [], gasCost: [], electricityCost: [], electricityCompensation: [] };
+const none = { power: [], energyImport: [], energyExport: [], solar: [], solarPower: [], gas: [], water: [], temperature: [], battery: [], batteryPower: [], batteryIn: [], batteryOut: [], gasCost: [], electricityCost: [], electricityCompensation: [] };
 const hours = (...changes: number[]) => changes.map((change, start) => ({ start, change }));
 
 test("daily usage is the sum of hourly statistics", () => {
@@ -31,10 +31,12 @@ test("daily usage is the sum of hourly statistics", () => {
     energy_import_today: 5.5,
     energy_export_today: null,
     solar_today: 1.5,
+    solar_power_w: null,
     gas_today: 2.25,
     water_today_l: 125,
     temperature: null,
     battery_soc: 65,
+    battery_power_w: null,
     gas_cost_today: 4.5,
     gas_price: 2,
     electricity_cost_today: null,

@@ -7,8 +7,8 @@ const ramp = (x: number, from: number, to: number) =>
 
 const entities: Entities = {
   power: ["sensor.demo_power"], energyImport: ["sensor.demo_import"], energyExport: ["sensor.demo_export"],
-  solar: ["sensor.demo_solar"], gas: ["sensor.demo_gas"], water: ["sensor.demo_water"],
-  temperature: ["weather.forecast_demo"], battery: ["sensor.demo_battery"], batteryIn: [], batteryOut: [],
+  solar: ["sensor.demo_solar"], solarPower: ["sensor.demo_solar_power"], gas: ["sensor.demo_gas"], water: ["sensor.demo_water"],
+  temperature: ["weather.forecast_demo"], battery: ["sensor.demo_battery"], batteryPower: ["sensor.demo_battery_power"], batteryIn: [], batteryOut: [],
   gasCost: [], electricityCost: [], electricityCompensation: [],
 };
 
@@ -29,10 +29,12 @@ export function demoReading(now: Date) {
     energy_import_today: imported,
     energy_export_today: exported,
     solar_today: solar,
+    solar_power_w: Math.round(4200 * sun),
     gas_today: gas,
     water_today_l: 9 * hour + 60 * ramp(hour, 7, 8),
     temperature: 14 + 6 * Math.sin((Math.PI * (hour - 9)) / 12),
     battery_soc: 20 + 75 * ramp(hour, 9, 15) * (1 - 0.7 * ramp(hour, 18, 24)),
+    battery_power_w: hour >= 9 && hour < 15 ? -1600 * sun : hour >= 18 ? 900 : 0,
     gas_cost_today: gas * 1.35,
     gas_price: 1.35,
     electricity_cost_today: imported * 0.3 - exported * 0.08,
