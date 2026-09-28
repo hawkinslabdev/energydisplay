@@ -108,6 +108,20 @@ export function statistics(history: History, midnight: number) {
   return { today, days };
 }
 
+const FIVE_MINUTES = 300_000;
+export type Samples = { day: number; buckets: Record<number, { sum: number; count: number }> };
+
+// ponytail: in memory, so the timeline restarts with the server; persist in History if that matters
+export function addSample(samples: Samples, midnight: number, now: number, watts: number | undefined): Statistics {
+  if (samples.day !== midnight) Object.assign(samples, { day: midnight, buckets: {} });
+  if (watts !== undefined) {
+    const bucket = (samples.buckets[now - (now % FIVE_MINUTES)] ??= { sum: 0, count: 0 });
+    bucket.sum += watts;
+    bucket.count++;
+  }
+  return { [POWER]: Object.entries(samples.buckets).map(([start, { sum, count }]) => ({ start: Number(start), mean: sum / count })) };
+}
+
 async function fetchMeter(): Promise<Measurement> {
   const host = env.HOMEWIZARD_HOST;
   if (!env.HOMEWIZARD_TOKEN) {
@@ -146,6 +160,7 @@ const FILE = env.DATA_DIR && `${env.DATA_DIR}/homewizard.json`;
 const WRITE_MS = 5 * 60_000;
 let history: Promise<History> | undefined;
 let written = { at: 0, day: 0 };
+const samples: Samples = { day: 0, buckets: {} };
 
 // without DATA_DIR, today restarts from the first reading
 const load = async (): Promise<History> => {
@@ -178,5 +193,6 @@ export async function readHomeWizard(midnight: Date) {
   const data = await (history ??= load());
   record(data, midnight.getTime(), states);
   await save(data, midnight.getTime());
-  return { entities, states, ...statistics(data, midnight.getTime()) };
+  const watts = states[POWER] && Number(states[POWER].state);
+  return { entities, states, ...statistics(data, midnight.getTime()), samples: addSample(samples, midnight.getTime(), Date.now(), watts) };
 }

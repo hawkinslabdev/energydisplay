@@ -43,6 +43,7 @@ test("daily usage is the sum of hourly statistics", () => {
     grid_net_today: 5.5,
     solar_self_consumed_pct: null,
     self_sufficiency_pct: (1 - 5.5 / 7) * 100,
+    timeline: [],
     ranges: {},
   });
 });
@@ -135,6 +136,19 @@ test("energy dashboard preferences map to entities", () => {
     electricityCompensation: ["sensor.r1_compensation"],
   });
   assert.equal(gasPrice, 1.35);
+});
+
+test("timeline sums five minute power per start", () => {
+  const reading = summarize(
+    { ...none, power: ["p1", "p2"], solarPower: ["s"] },
+    { p1: s("p1", "0", "kW"), p2: s("p2", "0", "W") },
+    {},
+    null,
+    {},
+    null,
+    { p1: [{ start: 0, mean: 0.5 }, { start: 300, mean: 1 }], p2: [{ start: 0, mean: 100 }], s: [{ start: 300, mean: 800 }] },
+  );
+  assert.deepEqual(reading.timeline, [{ start: 0, power: 600, solar: null }, { start: 300, power: 1000, solar: 800 }]);
 });
 
 test("unconfigured or unavailable entities are null, not 0", () => {

@@ -20,3 +20,20 @@ body {
   background: #8d37ff;
   color: #fff;
 }
+
+@keyframes flow {
+  to {
+    stroke-dashoffset: -2;
+  }
+}
+
+.flow {
+  stroke-dasharray: 0 2;
+  animation: flow linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow {
+    animation: none;
+  }
+}

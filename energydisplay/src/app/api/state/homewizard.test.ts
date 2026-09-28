@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { type History, record, statistics, toStates } from "./homewizard.ts";
+import { type History, addSample, record, statistics, toStates } from "./homewizard.ts";
 
 const day = (offset: number) => new Date(2026, 8, 27 + offset).getTime();
 const at = (values: Record<string, number>) =>
@@ -58,4 +58,12 @@ test("reference days cover the last 30 days and last season, old days are pruned
   const { today, days } = statistics(history, day(0));
   assert.deepEqual(today, { "p1.gas": [{ start: day(0), change: 0 }] });
   assert.deepEqual(days, { "p1.gas": [{ start: day(-365), change: 2 }] });
+});
+
+test("power samples average per five minutes and reset at midnight", () => {
+  const samples = { day: 0, buckets: {} };
+  addSample(samples, 0, 1_000, 100);
+  addSample(samples, 0, 2_000, 300);
+  assert.deepEqual(addSample(samples, 0, 301_000, 50), { "p1.power": [{ start: 0, mean: 200 }, { start: 300_000, mean: 50 }] });
+  assert.deepEqual(addSample(samples, 86_400_000, 86_401_000, undefined), { "p1.power": [] });
 });

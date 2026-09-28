@@ -54,8 +54,6 @@ All configuration is managed through environment variables in `.env`.
 | `TZ` | Time zone that defines midnight for daily totals, e.g. `Europe/Amsterdam` |
 | `FRAME_ANCESTORS` | Additional origins allowed to embed the display in an iframe, space- or comma-separated. |
 
-Based on your choice, you can change the settings per adapter:
-
 <details>
 <summary>Home Assistant</summary>
 
@@ -75,7 +73,7 @@ URL and token are required. Entities come from autodiscovery, entity variables, 
 
 **Autodiscovery**
 
-Autodiscovery runs at startup (`AUTODISCOVER=false` to disable). It pulls configuration directly from your Home Assistant Energy Dashboard for grid, solar, gas, water, battery, and weather entities. Manual entity variables take precedence over autodiscovered values.
+Autodiscovery runs at startup and reads the Home Assistant Energy dashboard. Entity variables take precedence.
 
 | Value | Source |
 | --- | --- |
@@ -93,12 +91,12 @@ Explicitly configure or override entities (supports comma-separated lists to sum
 | `ENERGY_IMPORT` | Total imported energy sensor (kWh or Wh) |
 | `ENERGY_EXPORT` | Total exported energy sensor (kWh or Wh) |
 | `SOLAR` | Total or daily solar production sensor (kWh or Wh) |
-| `SOLAR_POWER` | Opt-in solar power sensor (W or kW), shown under solar today. Not autodiscovered. |
+| `SOLAR_POWER` | Solar power sensor (W or kW). Not autodiscovered. |
 | `GAS` | Total gas sensor (m³) |
 | `WATER` | Total water sensor (m³ or L; m³ is converted to L) |
 | `TEMPERATURE` | Temperature sensor (°C), or a `weather.*` entity (reads its `temperature` attribute) |
-| `BATTERY` | Battery state of charge sensor (%). |
-| `BATTERY_POWER` | Opt-in battery power sensor (W or kW; negative while charging), shown under the state of charge. Not autodiscovered. |
+| `BATTERY` | Battery state of charge sensor (%) |
+| `BATTERY_POWER` | Battery power sensor (W or kW; negative while charging). Not autodiscovered. |
 
 </details>
 
@@ -130,8 +128,6 @@ The P1 Meter provides power, grid import and export, and gas and water from mete
 
 </details>
 
-You can change various settings:
-
 <details>
 <summary>Prices</summary>
 
@@ -144,6 +140,22 @@ Used for gas and electricity cost with both adapters. With Home Assistant, cost 
 | `GAS_PRICE` | Price per m³ gas |
 | `ELECTRICITY_PRICE` | Price per kWh imported |
 | `ELECTRICITY_COMPENSATION` | Price per kWh exported, subtracted from the electricity cost. Default: 0. |
+
+</details>
+
+<details>
+<summary>Layout</summary>
+
+<br>
+
+`LAYOUT` sets the layout. `?layout=` overrides it per display, e.g. `http://host:9123/?layout=flow`.
+
+| Value | Shows | Uses |
+| --- | --- | --- |
+| `classic` | Three wheels, grid today and four bars (default) | `WHEEL1`–`WHEEL3`, `BAR1`–`BAR4` |
+| `flow` | Grid, solar, battery and home nodes with live power paths | `POWER`, optional `SOLAR_POWER` and `BATTERY_POWER` |
+| `timeline` | Live power, grid and solar today, a chart of today's grid and solar power, and the bars | `POWER`, optional `SOLAR_POWER`, `BAR1`–`BAR4` |
+| `tiles` | Every configured gauge as a titled bar | All configured entities |
 
 </details>
 
@@ -167,14 +179,14 @@ Used for gas and electricity cost with both adapters. With Home Assistant, cost 
 | `power` | Current power (W) | `POWER` |
 | `water` | Water usage today (L) | `WATER` |
 | `gas` | Gas usage today (m³) | `GAS` |
-| `grid` | Grid neutrality: net imported from (positive) or exported to (negative) the grid today (kWh) | `ENERGY_IMPORT`, `ENERGY_EXPORT` |
-| `solar` | Solar production today (kWh), optionally with current production in place of the decimals | `SOLAR`, `SOLAR_POWER` optional |
+| `grid` | Net import (positive) or export (negative) today (kWh) | `ENERGY_IMPORT`, `ENERGY_EXPORT` |
+| `solar` | Solar production today (kWh); current production with `SOLAR_POWER` | `SOLAR` |
 | `self_consumption` | Self-consumed solar energy today (%), as in the Energy dashboard gauge. Battery flows require autodiscovery. | `SOLAR`, `ENERGY_EXPORT` |
 | `self_sufficiency` | Self-sufficiency today (%), as in the Energy dashboard gauge. Battery flows require autodiscovery. | `ENERGY_IMPORT`, `SOLAR` |
 | `gas_cost` | Gas cost today (€): cost statistics, otherwise gas × `GAS_PRICE` | `GAS` |
 | `electricity_cost` | Electricity cost today (€): cost statistics, otherwise import × `ELECTRICITY_PRICE` − export × `ELECTRICITY_COMPENSATION` | `ENERGY_IMPORT` |
 | `temperature` | Current temperature (°C) | `TEMPERATURE` |
-| `battery` | Battery state of charge (%), optionally with charge (↑) or discharge (↓) power in place of the decimals | `BATTERY`, `BATTERY_POWER` optional |
+| `battery` | Battery state of charge (%); charge (↑) or discharge (↓) power with `BATTERY_POWER` | `BATTERY` |
 
 Unconfigured metrics fall back to available options or hide automatically.
 
@@ -188,9 +200,7 @@ Unconfigured metrics fall back to available options or hide automatically.
 
 <br>
 
-If the host is unreachable, your token is rejected, or the connection times out (after 10 seconds), you'll see a 502 error and a quick error message at the bottom of the screen. 
-
-To see what actually went wrong under the hood, check the container logs:
+An unreachable host, rejected token or 10-second timeout returns HTTP 502 and an error line at the bottom of the screen. Details are in the container log:
 
 ```bash
 docker compose logs energydisplay
@@ -203,12 +213,10 @@ docker compose logs energydisplay
 
 <br>
 
-If you see a dash (`–`), it just means there’s no entity set up for that value, or the entity isn't sending back a number right now. 
+A dash (`–`) means the value has no entity, or its entity has no numeric state. `/api/state` lists:
 
-You can check what’s going on using the `/api/state` endpoint, which breaks down:
-
-- `entities`: All the entity IDs currently attached to values (found via environment variables or autodiscovery).
-- `unavailable`: Any entity IDs that Home Assistant can't get a valid numeric state for.
+- `entities`: entity IDs in use, from environment variables or autodiscovery.
+- `unavailable`: entity IDs without a numeric state.
 
 </details>
 
@@ -226,6 +234,10 @@ docker compose up -d --force-recreate
 `ADAPTER=homewizard` requires `HOMEWIZARD_HOST`. The P1 Meter has no solar, temperature or battery source: positions that default to these show another available value, and positions set to these explicitly show a dash (wheels) or are hidden (bars).
 
 </details>
+
+## Contributing
+
+Contributions are welcome! Please open an issue to discuss any proposed changes or identified issues.
 
 ## License
 

@@ -42,8 +42,8 @@ export const GAUGES = {
     },
     grid: {
         field: "grid_net_today",
-        icon: ["M12 2v20", "M2 5h20", "M3 3v2", "M7 3v2", "M17 3v2", "M21 3v2", "M19 5l-7 7-7-7"], requires: ["energyImport", "energyExport"], maxValue: 20, unit: "kWh", background: "#1f2a50", highlight: "#6d8bff",
-        title: "Grid neutrality",
+        icon: ["M7 20V4", "M3 8l4-4 4 4", "M17 4v16", "M13 16l4 4 4-4"], requires: ["energyImport", "energyExport"], maxValue: 20, unit: "kWh", background: "#1f2a50", highlight: "#6d8bff",
+        title: "Net grid today",
         detail: "Net imported from the grid (positive) or net exported to the grid (negative) since midnight. Midpoint benchmark: typical day of the last 30 days and the same season last year.",
         source: "ENERGY_IMPORT − ENERGY_EXPORT",
     },
@@ -106,10 +106,18 @@ export const DEFAULT_WHEELS: GaugeName[] = ["power", "water", "gas"];
 export const DEFAULT_BARS: GaugeName[] = ["gas_cost", "solar", "temperature", "battery"];
 
 export const isGauge = (name: string): name is GaugeName => name in GAUGES;
+export const isConfigured = (gauge: GaugeName, entities: Entities) =>
+    GAUGES[gauge].requires.every((key) => entities[key].length);
+
+export const LAYOUTS = ["classic", "flow", "timeline", "tiles"] as const;
+export type Layout = (typeof LAYOUTS)[number];
+
+export const pickLayout = (value?: string | null, fallback: Layout = "classic"): Layout =>
+    LAYOUTS.find((layout) => layout === value?.trim().toLowerCase()) ?? fallback;
 
 export function pickGauges(explicit: (string | undefined)[], defaults: GaugeName[], entities: Entities): GaugeName[] {
     const names = explicit.map((name) => name?.trim().toLowerCase() ?? "");
-    const configured = (gauge: GaugeName) => GAUGES[gauge].requires.every((key) => entities[key].length);
+    const configured = (gauge: GaugeName) => isConfigured(gauge, entities);
     const gauges = names.map((name, i) =>
         isGauge(name) ? name : configured(defaults[i]) ? defaults[i] : undefined);
     const taken = new Set(gauges);

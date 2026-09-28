@@ -89,3 +89,24 @@ export const typical = (values: Iterable<number>) => {
   const median = sorted.length % 2 ? sorted[Math.floor(middle)] : (sorted[middle - 1] + sorted[middle]) / 2;
   return 2 * median || undefined;
 };
+
+// live watts per path; battery is positive while discharging
+export function powerFlows(grid: number, solar: number, battery: number) {
+  const routed = consumption({
+    from_grid: Math.max(grid, 0),
+    to_grid: Math.max(-grid, 0),
+    solar: Math.max(solar, 0),
+    from_battery: Math.max(battery, 0),
+    to_battery: Math.max(-battery, 0),
+  });
+  return {
+    home: routed.used_total,
+    solar_home: routed.used_solar,
+    solar_grid: routed.solar_to_grid,
+    solar_battery: routed.solar_to_battery,
+    grid_home: Math.max(routed.used_total - routed.used_solar - routed.used_battery, 0),
+    grid_battery: routed.grid_to_battery,
+    battery_home: routed.used_battery,
+    battery_grid: routed.battery_to_grid,
+  };
+}

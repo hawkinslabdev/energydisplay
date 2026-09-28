@@ -42,12 +42,14 @@ export interface Reading {
   grid_net_today: number | null;
   solar_self_consumed_pct: number | null;
   self_sufficiency_pct: number | null;
+  // five minute mean grid and solar power since midnight
+  timeline: { start: number; power: number | null; solar: number | null }[];
   // full scale per field from last 30 days and season last year
   ranges: Partial<Record<keyof Reading, number>>;
 }
 
 // hourly change rows from recorder/statistics_during_period by statistic id
-type Row = { start: number; change?: number | null; max?: number | null; min?: number | null };
+type Row = { start: number; change?: number | null; max?: number | null; min?: number | null; mean?: number | null };
 export type Statistics = Record<string, Row[]>;
 
 interface EnergySource {
@@ -120,6 +122,7 @@ export function summarize(
   gasPrice: number | null,
   days: Statistics = {},
   electricity: { price: number; compensation: number } | null = null,
+  samples: Statistics = {},
 ): Reading {
   const factor = (id: string) =>
     FACTOR[current[id]?.attributes?.unit_of_measurement ?? ""] ?? 1;
@@ -169,6 +172,13 @@ export function summarize(
     to_battery: flows.to_battery.get(start) ?? 0,
   }));
 
+  const mean = (id: string, row: Row) => (row.mean ?? 0) * factor(id);
+  const gridSamples = byStart(samples, entities.power, mean);
+  const solarSamples = byStart(samples, entities.solarPower, mean);
+  const timeline = [...new Set([...gridSamples.keys(), ...solarSamples.keys()])]
+    .sort((a, b) => a - b)
+    .map((start) => ({ start, power: gridSamples.get(start) ?? null, solar: solarSamples.get(start) ?? null }));
+
   const gasScale = typical(byStart(days, entities.gas, (_, row) => row.change ?? 0).values());
   const ranges: Reading["ranges"] = {
     power_w: peak(byStart(days, entities.power, (id, row) => Math.max(Math.abs(row.max ?? 0), Math.abs(row.min ?? 0)) * factor(id)).values()),
@@ -202,6 +212,7 @@ export function summarize(
     grid_net_today: total([imported ?? undefined, exported === null ? undefined : -exported]),
     solar_self_consumed_pct: solar === null || exported === null ? null : solarConsumedPct(hours),
     self_sufficiency_pct: imported === null ? null : selfSufficiencyPct(hours),
+    timeline,
     ranges: Object.fromEntries(Object.entries(ranges).filter(([, value]) => value)),
   };
 }

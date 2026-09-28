@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { DEFAULT_BARS, DEFAULT_WHEELS, pickGauges } from "../../gauges";
+import { DEFAULT_BARS, DEFAULT_WHEELS, LAYOUTS, pickGauges } from "../../gauges";
 import {
   ENTITY_ID,
   type Entities,
@@ -27,6 +27,10 @@ if (!["default", "homeassistant", "haos", "homewizard"].includes(adapter)) {
   console.warn(`Unknown ADAPTER ${adapter}; using Home Assistant`);
 }
 const homewizard = adapter === "homewizard";
+
+if (env.LAYOUT && !LAYOUTS.some((layout) => layout === env.LAYOUT!.trim().toLowerCase())) {
+  console.warn(`Unknown LAYOUT ${env.LAYOUT}, falling back..`);
+}
 
 const price = (value?: string) => {
   const parsed = parseFloat(value ?? "");
@@ -216,7 +220,8 @@ async function fromHomeAssistant(midnight: Date) {
     ...entities.electricityCost,
     ...entities.electricityCompensation,
   ];
-  const [current, [statistics], days] = await Promise.all([
+  const live = [...entities.power, ...entities.solarPower];
+  const [current, [statistics], days, [samples]] = await Promise.all([
     Promise.all(ids.map((id) => ha<HaState>(`states/${id}`, true))),
     totals.length
       ? haCommands([{
@@ -228,26 +233,35 @@ async function fromHomeAssistant(midnight: Date) {
         }])
       : [{}],
     referenceDays(midnight, [...totals, ...entities.power]),
+    live.length
+      ? haCommands([{
+          type: "recorder/statistics_during_period",
+          start_time: midnight.toISOString(),
+          statistic_ids: live,
+          period: "5minute",
+          types: ["mean"],
+        }])
+      : [{}],
   ]);
-  return { entities, gasPrice, states: byId(current), statistics: statistics as Statistics, days };
+  return { entities, gasPrice, states: byId(current), statistics: statistics as Statistics, days, samples: samples as Statistics };
 }
 
 async function fromHomeWizard(midnight: Date) {
-  const { entities, states, today, days } = await readHomeWizard(midnight);
+  const { entities, states, today, days, samples } = await readHomeWizard(midnight);
   // entity variables name home assistant entities, so only meter fields count
   const all = Object.fromEntries(
     Object.keys(configured).map((key) => [key, entities[key as keyof Entities] ?? []]),
   ) as unknown as Entities;
-  return { entities: all, gasPrice: envPrice, states, statistics: today, days };
+  return { entities: all, gasPrice: envPrice, states, statistics: today, days, samples };
 }
 
 async function read() {
   const midnight = new Date();
   midnight.setHours(0, 0, 0, 0);
-  const { entities, gasPrice, states, statistics, days } = await (homewizard ? fromHomeWizard : fromHomeAssistant)(midnight);
+  const { entities, gasPrice, states, statistics, days, samples } = await (homewizard ? fromHomeWizard : fromHomeAssistant)(midnight);
   const ids = [...new Set(Object.values(entities).flat())];
   return {
-    ...summarize(entities, states, statistics, gasPrice, days, electricity),
+    ...summarize(entities, states, statistics, gasPrice, days, electricity, samples),
     ...layout(entities),
     // Troubleshooting: the entity IDs in use (set or discovered), and those without a usable value.
     entities,
