@@ -65,6 +65,15 @@ interface EnergySource {
 
 export const ENTITY_ID = /^[a-z0-9_]+\.[a-z0-9_]+$/;
 
+// calendar days, so daylight saving time never shifts a local midnight
+export const shiftDays = (midnight: number, days: number) => new Date(midnight).setDate(new Date(midnight).getDate() + days);
+
+// [from, to) of the daily reference: the last 30 days and the same season last year (±15 days)
+export const referencePeriods = (midnight: number) => [
+  [shiftDays(midnight, -30), midnight],
+  [shiftDays(midnight, -365 - 15), shiftDays(midnight, -365 + 16)],
+];
+
 // costSensors is energy/info cost_sensors: the cost entity home assistant made per meter
 export function fromPrefs(prefs: { energy_sources: EnergySource[] }, costSensors: Record<string, string> = {}) {
   const valid = (id: unknown): id is string => typeof id === "string" && ENTITY_ID.test(id);

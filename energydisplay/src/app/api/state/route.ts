@@ -11,6 +11,7 @@ import {
   num,
   pickDevicePower,
   pickWeather,
+  referencePeriods,
   summarize,
 } from "./summarize";
 import { readHomeWizard } from "./homewizard";
@@ -165,20 +166,15 @@ async function resolveEntities(): Promise<{ entities: Entities; gasPrice: number
 let reference: { day: number; days: Promise<Statistics> } | undefined;
 function referenceDays(midnight: Date, ids: string[]) {
   if (reference?.day !== midnight.getTime()) {
-    const shift = (from: Date, days: number) => new Date(new Date(from).setDate(from.getDate() + days)).toISOString();
-    const period = (start_time: string, end_time: string) => ({
+    // end a second early, so the day starting at `to` is out whether home assistant treats end_time as inclusive or not
+    const days = haCommands(referencePeriods(midnight.getTime()).map(([from, to]) => ({
       type: "recorder/statistics_during_period",
-      start_time,
-      end_time,
+      start_time: new Date(from).toISOString(),
+      end_time: new Date(to - 1000).toISOString(),
       statistic_ids: ids,
       period: "day",
       types: ["change", "max", "min"],
-    });
-    const days = haCommands([
-      // end is inclusive, so stop before today's partial day
-      period(shift(midnight, -30), new Date(midnight.getTime() - 1000).toISOString()),
-      period(shift(midnight, -365 - 15), shift(midnight, -365 + 15)),
-    ]).then((results) => {
+    }))).then((results) => {
       const merged: Statistics = {};
       for (const result of results as Statistics[])
         for (const [id, rows] of Object.entries(result)) merged[id] = [...(merged[id] ?? []), ...rows];

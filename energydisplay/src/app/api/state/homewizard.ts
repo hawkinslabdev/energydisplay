@@ -1,7 +1,7 @@
 import { readFile, rename, writeFile } from "node:fs/promises";
 import { get } from "node:https";
 
-import type { Entities, HaState, Statistics } from "./summarize.ts";
+import { type Entities, type HaState, type Statistics, num, referencePeriods, shiftDays as shift } from "./summarize.ts";
 
 const env = process.env;
 
@@ -41,7 +41,7 @@ export interface Measurement {
 const COUNTERS = ["p1.energy_import", "p1.energy_export", "p1.gas", "p1.water"];
 const POWER = "p1.power";
 
-// only fields the meter reports become entities; null marks a reported but unavailable value
+// only fields the meter reports become entities; null is a reported but unavailable value, kept for its unit
 export function toStates(m: Measurement) {
   const external = (type: string) => m.external?.find((device) => device.type === type);
   const gas = external("gas_meter");
@@ -58,7 +58,7 @@ export function toStates(m: Measurement) {
   for (const [key, id, value, unit] of fields) {
     if (value === undefined) continue;
     entities[key] = [id];
-    if (value !== null) states[id] = { entity_id: id, state: String(value), attributes: { unit_of_measurement: unit } };
+    states[id] = { entity_id: id, state: value === null ? "unavailable" : String(value), attributes: { unit_of_measurement: unit } };
   }
   return { entities, states };
 }
@@ -67,13 +67,11 @@ export function toStates(m: Measurement) {
 type Day = Record<string, { first: number; last: number } | { min: number; max: number }>;
 export type History = Record<string, Day>;
 
-const DAY_MS = 86_400_000;
-const shift = (midnight: number, days: number) => new Date(midnight).setDate(new Date(midnight).getDate() + days);
-
 export function record(history: History, midnight: number, states: Record<string, HaState>) {
   const day = (history[midnight] ??= {});
   for (const [id, state] of Object.entries(states)) {
-    const value = Number(state.state);
+    const value = num(state);
+    if (value === undefined) continue;
     const entry = day[id] as { first: number; last: number; min: number; max: number } | undefined;
     if (id === POWER) day[id] = { min: Math.min(entry?.min ?? value, value), max: Math.max(entry?.max ?? value, value) };
     else day[id] = { first: entry?.first ?? value, last: value };
@@ -82,7 +80,7 @@ export function record(history: History, midnight: number, states: Record<string
   for (const key of Object.keys(history)) if (Number(key) < shift(midnight, -381)) delete history[key];
 }
 
-// today as one live row; past days in the reference periods of route.ts referenceDays
+// today as one live row; past days in the reference periods
 export function statistics(history: History, midnight: number) {
   const change = (start: number, id: string) => {
     const today = history[start]?.[id] as { first: number; last: number } | undefined;
@@ -90,9 +88,7 @@ export function statistics(history: History, midnight: number) {
     // yesterday's last reading, so usage while the display was off still counts
     return today && today.last - (before?.last ?? today.first);
   };
-  const inPeriod = (start: number) =>
-    (start >= shift(midnight, -30) && start < midnight) ||
-    Math.abs(start - shift(midnight, -365)) <= 15 * DAY_MS;
+  const inPeriod = (start: number) => referencePeriods(midnight).some(([from, to]) => start >= from && start < to);
   const today: Statistics = {};
   const days: Statistics = {};
   for (const id of COUNTERS) {
@@ -193,6 +189,6 @@ export async function readHomeWizard(midnight: Date) {
   const data = await (history ??= load());
   record(data, midnight.getTime(), states);
   await save(data, midnight.getTime());
-  const watts = states[POWER] && Number(states[POWER].state);
+  const watts = num(states[POWER]);
   return { entities, states, ...statistics(data, midnight.getTime()), samples: addSample(samples, midnight.getTime(), Date.now(), watts) };
 }

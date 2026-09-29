@@ -28,7 +28,9 @@ test("v1 measurement uses legacy fields and external water", () => {
     external: [{ type: "water_meter", value: null, unit: "m3" }],
   });
   assert.deepEqual(entities.water, ["p1.water"]);
-  assert.equal(states["p1.water"], undefined);
+  // unavailable, yet the unit still scales today to litres
+  assert.equal(states["p1.water"].state, "unavailable");
+  assert.equal(states["p1.water"].attributes?.unit_of_measurement, "m³");
   assert.equal(states["p1.gas"].state, "20");
   assert.equal(states["p1.energy_import"].state, "100");
 });
@@ -58,6 +60,22 @@ test("reference days cover the last 30 days and last season, old days are pruned
   const { today, days } = statistics(history, day(0));
   assert.deepEqual(today, { "p1.gas": [{ start: day(0), change: 0 }] });
   assert.deepEqual(days, { "p1.gas": [{ start: day(-365), change: 2 }] });
+});
+
+test("last season spans 31 calendar days across a daylight saving change", () => {
+  // 2025-10-26 falls between day -380 and day -365
+  const today = new Date(2026, 10, 5).getTime();
+  const history: History = {};
+  for (let offset = -381; offset <= -349; offset++) {
+    history[new Date(2026, 10, 5 + offset).getTime()] = { "p1.gas": { first: 0, last: 1 } };
+  }
+  assert.equal(statistics(history, today).days["p1.gas"].length, 31);
+});
+
+test("unavailable readings are not recorded", () => {
+  const history: History = {};
+  record(history, day(0), toStates({ power_w: null, energy_import_kwh: 5 }).states);
+  assert.deepEqual(history[day(0)], { "p1.energy_import": { first: 5, last: 5 } });
 });
 
 test("power samples average per five minutes and reset at midnight", () => {
